@@ -78,12 +78,17 @@ export default function Home() {
 
       {/* Wallet */}
       <div className="px-4 pt-4 pb-2">
-        <div className="bg-card border border-border rounded-xl p-3 flex items-center justify-between">
+        <div 
+          onClick={() => navigate("/portefeuille")}
+          className="bg-card border border-border rounded-xl p-3 flex items-center justify-between cursor-pointer hover:border-[hsl(var(--tc-green))] transition-colors"
+        >
           <div>
             <p className="text-[10px] text-muted-foreground">Portefeuille disponible</p>
             <p className="text-base font-bold text-[hsl(var(--tc-green))]">{formatFCFA(profile?.wallet_balance ?? 0)}</p>
           </div>
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[hsla(160,84%,39%,0.1)] text-[hsl(var(--tc-green))]">💳 Actif</span>
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[hsla(160,84%,39%,0.1)] text-[hsl(var(--tc-green))] flex items-center gap-1">
+            💳 Gérer →
+          </span>
         </div>
       </div>
 

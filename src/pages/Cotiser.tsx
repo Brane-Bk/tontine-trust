@@ -4,7 +4,7 @@ import TopBar from "@/components/layout/TopBar";
 import { Check, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
-import { initPayment, TalyPayResponse } from "@/lib/talypay";
+import { initPayment, payFromWallet, TalyPayResponse } from "@/lib/talypay";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { toast } from "sonner";
 
@@ -12,6 +12,7 @@ const OPERATORS = [
   { id: "mtn", name: "MTN MoMo", shortName: "MTN", color: "#FFA500", textColor: "#fff" },
   { id: "moov", name: "Moov Money", shortName: "Moov", color: "#003B8C", textColor: "#fff" },
   { id: "celtiis", name: "Celtiis Cash", shortName: "Celtiis", color: "#FF4500", textColor: "#fff" },
+  { id: "wallet", name: "Portefeuille Tontine", shortName: "Wallet", color: "#10B981", textColor: "#fff" },
 ];
 
 interface Group { id: string; name: string; contribution_amount: number; }
@@ -58,19 +59,37 @@ export default function Cotiser() {
       await supabase.from("profiles").update({ phone }).eq("id", user.id);
     }
 
-    const result: TalyPayResponse = await initPayment({
-      amount: total,
-      currency: "XOF",
-      customer_phone: phone,
-      profile_id: user.id,
-      group_id: selectedGroup.id,
-      transaction_type: "contribution",
-      transaction_name: `Cotisation — ${selectedGroup.name}`,
-      operator: operator,
-    });
+    let result: TalyPayResponse;
+    if (operator === "wallet") {
+      result = await payFromWallet({
+        amount: total,
+        profile_id: user.id,
+        group_id: selectedGroup.id,
+        transaction_type: "contribution",
+        transaction_name: `Cotisation — ${selectedGroup.name}`,
+      });
+    } else {
+      result = await initPayment({
+        amount: total,
+        currency: "XOF",
+        customer_phone: phone,
+        profile_id: user.id,
+        group_id: selectedGroup.id,
+        transaction_type: "contribution",
+        transaction_name: `Cotisation — ${selectedGroup.name}`,
+        operator: operator,
+      });
+    }
 
     setPayResult(result);
     if (result.success) {
+      // Mettre à jour le statut du membre à "paid"
+      await supabase
+        .from("group_members")
+        .update({ status: "paid", paid_date: new Date().toISOString() })
+        .eq("group_id", selectedGroup.id)
+        .eq("profile_id", user.id);
+
       await refreshProfile();
       setStep("done");
     } else {
@@ -130,8 +149,8 @@ export default function Cotiser() {
           />
 
           {/* Operator */}
-          <label className="block text-xs font-medium text-muted-foreground mb-2">Opérateur mobile money</label>
-          <div className="grid grid-cols-3 gap-2 mb-5">
+          <label className="block text-xs font-medium text-muted-foreground mb-2">Mode de paiement</label>
+          <div className="grid grid-cols-4 gap-2 mb-5">
             {OPERATORS.map((op) => (
               <button
                 key={op.id}
@@ -174,10 +193,14 @@ export default function Cotiser() {
           <button
             onClick={() => {
               if (!selectedGroup) { toast.error("Sélectionnez un groupe"); return; }
-              if (!phone || phone.replace(/\D/g, "").length < 8) { toast.error("Entrez un numéro valide"); return; }
+              if (operator === "wallet") {
+                if (total > (profile?.wallet_balance || 0)) { toast.error("Solde portefeuille insuffisant"); return; }
+              } else {
+                if (!phone || phone.replace(/\D/g, "").length < 8) { toast.error("Entrez un numéro valide"); return; }
+              }
               setStep("confirm");
             }}
-            disabled={!selectedGroup || !phone}
+            disabled={!selectedGroup || (operator !== "wallet" && !phone)}
             className="w-full py-3.5 rounded-xl text-sm font-semibold text-white tc-gradient-green tc-shadow-green disabled:opacity-40"
           >
             Continuer → {selectedGroup ? new Intl.NumberFormat("fr-FR").format(total) + " FCFA" : ""}
@@ -204,12 +227,14 @@ export default function Cotiser() {
               <span className="text-muted-foreground">Groupe</span>
               <span className="font-semibold">{selectedGroup?.name}</span>
             </div>
+            {operator !== "wallet" && (
+              <div className="flex justify-between px-4 py-3 text-sm">
+                <span className="text-muted-foreground">Téléphone</span>
+                <span className="font-semibold">{phone}</span>
+              </div>
+            )}
             <div className="flex justify-between px-4 py-3 text-sm">
-              <span className="text-muted-foreground">Téléphone</span>
-              <span className="font-semibold">{phone}</span>
-            </div>
-            <div className="flex justify-between px-4 py-3 text-sm">
-              <span className="text-muted-foreground">Opérateur</span>
+              <span className="text-muted-foreground">Moyen</span>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-4 rounded" style={{ background: selectedOp.color }} />
                 <span className="font-semibold">{selectedOp.name}</span>
@@ -218,9 +243,15 @@ export default function Cotiser() {
           </div>
 
           <div className="p-3 rounded-xl bg-[hsla(38,92%,50%,0.08)] border border-[hsla(38,92%,50%,0.2)] mb-5 text-center">
-            <p className="text-[11px] text-[hsl(var(--tc-amber))] font-medium">
-              📲 Une notification sera envoyée sur <strong>{phone}</strong> pour valider le paiement
-            </p>
+            {operator === "wallet" ? (
+              <p className="text-[11px] text-[hsl(var(--tc-amber))] font-medium">
+                Le montant sera déduit immédiatement de votre portefeuille.
+              </p>
+            ) : (
+              <p className="text-[11px] text-[hsl(var(--tc-amber))] font-medium">
+                📲 Une notification sera envoyée sur <strong>{phone}</strong> pour valider le paiement
+              </p>
+            )}
           </div>
 
           <button
@@ -273,14 +304,23 @@ export default function Cotiser() {
             <Check className="w-10 h-10 text-[hsl(var(--tc-green))]" strokeWidth={3} />
           </div>
           <h2 className="text-xl font-bold mb-1">Paiement initié !</h2>
-          <p className="text-xs text-muted-foreground mb-6">Validez la demande sur votre téléphone pour finaliser</p>
+          
+          {payResult.message?.includes("Test") && (
+            <div className="mb-4 inline-block px-3 py-1 bg-[hsla(38,92%,50%,0.15)] text-[hsl(var(--tc-amber))] text-xs font-bold rounded-full">
+              ⚠️ MODE TEST : Faux argent
+            </div>
+          )}
+          
+          <p className="text-xs text-muted-foreground mb-6">
+            {operator === "wallet" ? "Cotisation validée avec succès." : "Validez la demande sur votre téléphone pour finaliser"}
+          </p>
 
           <div className="bg-card border border-border rounded-2xl p-4 text-left mb-4">
             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Reçu</p>
             {[
               ["Montant", `${new Intl.NumberFormat("fr-FR").format(total)} FCFA`],
               ["Groupe", selectedGroup?.name],
-              ["Téléphone", phone],
+              ["Moyen", operator === "wallet" ? "Portefeuille" : phone],
               ["Date", now],
             ].map(([k, v]) => (
               <div key={k} className="flex justify-between text-xs mb-2">

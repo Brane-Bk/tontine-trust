@@ -23,6 +23,7 @@ import Notifications from "./pages/Notifications";
 import Profil from "./pages/Profil";
 import Parametres from "./pages/Parametres";
 import Admin from "./pages/Admin";
+import Portefeuille from "./pages/Portefeuille";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -60,6 +61,7 @@ const App = () => (
                 <Route path="/profil" element={<ProtectedRoute><Profil /></ProtectedRoute>} />
                 <Route path="/parametres" element={<ProtectedRoute><Parametres /></ProtectedRoute>} />
                 <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+                <Route path="/portefeuille" element={<ProtectedRoute><Portefeuille /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Route>
             </Routes>

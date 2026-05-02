@@ -114,11 +114,14 @@ export default function GroupeDetail() {
           <div className="flex flex-col gap-1">
             {members.map((m) => {
               const isMe = m.profile_id === user?.id;
+              const isWaitingGuarantee = m.status === "waiting_guarantee";
+              
               return (
                 <div key={m.id} className={`flex items-center gap-2.5 py-2 px-2 rounded-lg transition-colors ${isMe ? "bg-[hsla(160,84%,39%,0.06)]" : "hover:bg-accent/50"}`}>
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
                     m.status === "current" ? "bg-[hsl(var(--tc-green))] text-white"
                     : m.status === "paid" ? "bg-[hsla(160,84%,39%,0.2)] text-[hsl(var(--tc-green))]"
+                    : isWaitingGuarantee ? "bg-[hsla(38,92%,50%,0.2)] text-[hsl(var(--tc-amber))]"
                     : "bg-muted text-muted-foreground"
                   }`}>
                     {m.turn_order || "?"}
@@ -132,15 +135,17 @@ export default function GroupeDetail() {
                     <p className="text-[10px] text-muted-foreground">
                       {m.status === "paid" ? `Cotisé${m.paid_date ? " · " + new Date(m.paid_date).toLocaleDateString("fr-FR") : ""}`
                       : m.status === "current" ? "En cours · ce tour"
+                      : isWaitingGuarantee ? "⏳ Attente validation caution"
                       : "En attente"}
                     </p>
                   </div>
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
                     m.status === "paid" ? "bg-[hsla(160,84%,39%,0.1)] text-[hsl(var(--tc-green))]"
                     : m.status === "current" ? "bg-[hsla(38,92%,50%,0.1)] text-[hsl(var(--tc-amber))]"
+                    : isWaitingGuarantee ? "bg-[hsla(38,92%,50%,0.1)] text-[hsl(var(--tc-amber))]"
                     : "bg-muted text-muted-foreground"
                   }`}>
-                    {m.status === "paid" ? "✓ Fait" : m.status === "current" ? "Tour" : "Attente"}
+                    {m.status === "paid" ? "✓ Fait" : m.status === "current" ? "Tour" : isWaitingGuarantee ? "Caution" : "Attente"}
                   </span>
                 </div>
               );

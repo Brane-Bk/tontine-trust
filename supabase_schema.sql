@@ -118,6 +118,9 @@ ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'mem
 ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS turn_order INTEGER DEFAULT NULL;
 ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'waiting';
 ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS paid_date TIMESTAMP WITH TIME ZONE DEFAULT NULL;
+ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS guarantee_type TEXT DEFAULT 'money'; -- 'money', 'bank', 'property'
+ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS guarantee_proof TEXT DEFAULT NULL;
+ALTER TABLE public.group_members ADD COLUMN IF NOT EXISTS guarantee_status TEXT DEFAULT 'pending'; -- 'pending', 'verified', 'rejected'
 
 -- RLS Group Members
 ALTER TABLE public.group_members ENABLE ROW LEVEL SECURITY;
@@ -302,32 +305,42 @@ CREATE TRIGGER on_group_member_change
 CREATE OR REPLACE FUNCTION public.update_profile_on_transaction()
 RETURNS TRIGGER AS $$
 BEGIN
-    IF NEW.type = 'payout' AND NEW.amount > 0 THEN
-        UPDATE public.profiles
-        SET wallet_balance = wallet_balance + NEW.amount,
-            total_locked = GREATEST(total_locked - NEW.amount, 0),
-            cycles_completed = cycles_completed + 1
-        WHERE id = NEW.profile_id;
-    ELSIF NEW.type = 'deposit' AND NEW.amount > 0 THEN
-        UPDATE public.profiles
-        SET wallet_balance = wallet_balance + NEW.amount
-        WHERE id = NEW.profile_id;
-    ELSIF NEW.type = 'withdrawal' AND NEW.amount < 0 THEN
-        UPDATE public.profiles
-        SET wallet_balance = GREATEST(wallet_balance - ABS(NEW.amount), 0)
-        WHERE id = NEW.profile_id;
-    ELSIF NEW.type = 'contribution' AND NEW.amount < 0 THEN
-        -- Pour une cotisation payée en direct, l'argent ne passe pas par le wallet balance 
-        -- mais ça augmente le montant verrouillé.
-        UPDATE public.profiles
-        SET total_locked = total_locked + ABS(NEW.amount),
-            score = LEAST(score + 5, 1000)
-        WHERE id = NEW.profile_id;
-    ELSIF NEW.type = 'penalty' THEN
-        UPDATE public.profiles
-        SET wallet_balance = GREATEST(wallet_balance - ABS(NEW.amount), 0),
-            score = GREATEST(score - 20, 0)
-        WHERE id = NEW.profile_id;
+    -- Ne mettre à jour les soldes QUE si le paiement est réussi
+    IF NEW.talypay_status = 'success' OR NEW.talypay_status = 'simulated_success' OR NEW.talypay_status = 'wallet_transfer' THEN
+        IF NEW.type = 'payout' AND NEW.amount > 0 THEN
+            UPDATE public.profiles
+            SET wallet_balance = wallet_balance + NEW.amount,
+                total_locked = GREATEST(total_locked - NEW.amount, 0),
+                cycles_completed = cycles_completed + 1
+            WHERE id = NEW.profile_id;
+        ELSIF NEW.type = 'deposit' AND NEW.amount > 0 THEN
+            UPDATE public.profiles
+            SET wallet_balance = wallet_balance + NEW.amount
+            WHERE id = NEW.profile_id;
+        ELSIF NEW.type = 'withdrawal' AND NEW.amount < 0 THEN
+            UPDATE public.profiles
+            SET wallet_balance = GREATEST(wallet_balance - ABS(NEW.amount), 0)
+            WHERE id = NEW.profile_id;
+        ELSIF NEW.type = 'contribution' AND NEW.amount < 0 THEN
+            -- Si la contribution est payée depuis le wallet
+            IF NEW.talypay_status = 'wallet_transfer' THEN
+                UPDATE public.profiles
+                SET wallet_balance = GREATEST(wallet_balance - ABS(NEW.amount), 0),
+                    total_locked = total_locked + ABS(NEW.amount),
+                    score = LEAST(score + 5, 1000)
+                WHERE id = NEW.profile_id;
+            ELSE
+                UPDATE public.profiles
+                SET total_locked = total_locked + ABS(NEW.amount),
+                    score = LEAST(score + 5, 1000)
+                WHERE id = NEW.profile_id;
+            END IF;
+        ELSIF NEW.type = 'penalty' THEN
+            UPDATE public.profiles
+            SET wallet_balance = GREATEST(wallet_balance - ABS(NEW.amount), 0),
+                score = GREATEST(score - 20, 0)
+            WHERE id = NEW.profile_id;
+        END IF;
     END IF;
     RETURN NEW;
 END;
