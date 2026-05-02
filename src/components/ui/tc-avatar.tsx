@@ -1,3 +1,5 @@
+import type { FC } from "react";
+
 const colorMap = {
   green: "bg-[hsla(160,84%,39%,0.12)] text-[hsl(var(--tc-green))]",
   blue: "bg-[hsla(217,91%,60%,0.12)] text-[hsl(var(--tc-blue))]",
@@ -12,7 +14,7 @@ interface AvatarProps {
   size?: "sm" | "md" | "lg";
 }
 
-export default function TCAvatar({ initials, color, size = "md" }: AvatarProps) {
+const TCAvatar: FC<AvatarProps> = ({ initials, color, size = "md" }) => {
   const sizeClasses = {
     sm: "w-7 h-7 text-[10px]",
     md: "w-10 h-10 text-sm",
@@ -26,4 +28,6 @@ export default function TCAvatar({ initials, color, size = "md" }: AvatarProps) 
       {initials}
     </div>
   );
-}
+};
+
+export default TCAvatar;
