@@ -302,19 +302,31 @@ CREATE TRIGGER on_group_member_change
 CREATE OR REPLACE FUNCTION public.update_profile_on_transaction()
 RETURNS TRIGGER AS $$
 BEGIN
-    IF NEW.type = 'contribution' AND NEW.amount < 0 THEN
+    IF NEW.type = 'payout' AND NEW.amount > 0 THEN
+        UPDATE public.profiles
+        SET wallet_balance = wallet_balance + NEW.amount,
+            total_locked = GREATEST(total_locked - NEW.amount, 0),
+            cycles_completed = cycles_completed + 1
+        WHERE id = NEW.profile_id;
+    ELSIF NEW.type = 'deposit' AND NEW.amount > 0 THEN
+        UPDATE public.profiles
+        SET wallet_balance = wallet_balance + NEW.amount
+        WHERE id = NEW.profile_id;
+    ELSIF NEW.type = 'withdrawal' AND NEW.amount < 0 THEN
+        UPDATE public.profiles
+        SET wallet_balance = GREATEST(wallet_balance - ABS(NEW.amount), 0)
+        WHERE id = NEW.profile_id;
+    ELSIF NEW.type = 'contribution' AND NEW.amount < 0 THEN
+        -- Pour une cotisation payée en direct, l'argent ne passe pas par le wallet balance 
+        -- mais ça augmente le montant verrouillé.
         UPDATE public.profiles
         SET total_locked = total_locked + ABS(NEW.amount),
             score = LEAST(score + 5, 1000)
         WHERE id = NEW.profile_id;
-    ELSIF NEW.type = 'payout' AND NEW.amount > 0 THEN
-        UPDATE public.profiles
-        SET total_locked = GREATEST(total_locked - NEW.amount, 0),
-            cycles_completed = cycles_completed + 1
-        WHERE id = NEW.profile_id;
     ELSIF NEW.type = 'penalty' THEN
         UPDATE public.profiles
-        SET score = GREATEST(score - 20, 0)
+        SET wallet_balance = GREATEST(wallet_balance - ABS(NEW.amount), 0),
+            score = GREATEST(score - 20, 0)
         WHERE id = NEW.profile_id;
     END IF;
     RETURN NEW;
