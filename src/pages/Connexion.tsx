@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import TopBar from "@/components/layout/TopBar";
 import { supabase } from "@/lib/supabase";
@@ -9,6 +9,15 @@ export default function Connexion() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("rememberedEmail");
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
 
   const handleLogin = async () => {
     if (password.length < 6 || !email) {
@@ -18,13 +27,18 @@ export default function Connexion() {
 
     setLoading(true);
     try {
-
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
+
+      if (rememberMe) {
+        localStorage.setItem("rememberedEmail", email);
+      } else {
+        localStorage.removeItem("rememberedEmail");
+      }
 
       toast.success("Connexion réussie !");
       navigate("/home");
@@ -67,6 +81,18 @@ export default function Connexion() {
             placeholder="Votre mot de passe"
             className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-card text-sm outline-none focus:border-[hsl(var(--tc-green))] transition-colors"
           />
+        </div>
+
+        <div className="flex items-center justify-between mb-6">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="w-4 h-4 rounded border-border text-[hsl(var(--tc-green))] focus:ring-[hsl(var(--tc-green))]"
+            />
+            <span className="text-xs text-muted-foreground font-medium">Se souvenir de moi</span>
+          </label>
         </div>
 
         <button

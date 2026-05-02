@@ -1,16 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import TopBar from "@/components/layout/TopBar";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { Info, ShieldCheck, TrendingUp, Users } from "lucide-react";
 
 export default function CreerGroupe() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [showIntro, setShowIntro] = useState(false);
   const [form, setForm] = useState({
     name: "",
     amount: "",
@@ -20,6 +22,18 @@ export default function CreerGroupe() {
     penalty: "5",
     guarantee: "",
   });
+
+  useEffect(() => {
+    const hasSeenIntro = localStorage.getItem("hasSeenCreationIntro");
+    if (!hasSeenIntro) {
+      setShowIntro(true);
+    }
+  }, []);
+
+  const closeIntro = () => {
+    localStorage.setItem("hasSeenCreationIntro", "true");
+    setShowIntro(false);
+  };
 
   const handleCreate = async () => {
     if (!user) return;
@@ -106,6 +120,63 @@ export default function CreerGroupe() {
       setLoading(false);
     }
   };
+
+  if (showIntro) {
+    return (
+      <div className="fixed inset-0 z-[100] bg-background flex flex-col animate-fade-in">
+        <div className="flex-1 px-6 pt-16 pb-8 overflow-y-auto">
+          <div className="w-16 h-16 rounded-3xl tc-gradient-green flex items-center justify-center mb-8 mx-auto tc-shadow-green">
+            <Info className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-center mb-2">Création de Groupe</h2>
+          <p className="text-sm text-muted-foreground text-center mb-10 px-4">
+            En tant que créateur, vous posez les bases d'une tontine de confiance. Voici ce qu'il faut savoir :
+          </p>
+
+          <div className="space-y-6">
+            <div className="flex gap-4">
+              <div className="w-10 h-10 rounded-xl bg-[hsla(160,84%,39%,0.1)] flex items-center justify-center shrink-0">
+                <Users className="w-5 h-5 text-[hsl(var(--tc-green))]" />
+              </div>
+              <div>
+                <p className="text-sm font-bold mb-0.5">Gestion des membres</p>
+                <p className="text-[11px] text-muted-foreground">Vous définissez le nombre de places et validez les adhésions.</p>
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <div className="w-10 h-10 rounded-xl bg-[hsla(160,84%,39%,0.1)] flex items-center justify-center shrink-0">
+                <TrendingUp className="w-5 h-5 text-[hsl(var(--tc-green))]" />
+              </div>
+              <div>
+                <p className="text-sm font-bold mb-0.5">Fréquence et Montant</p>
+                <p className="text-[11px] text-muted-foreground">Choisissez des paramètres réalistes pour assurer la régularité des cotisations.</p>
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <div className="w-10 h-10 rounded-xl bg-[hsla(160,84%,39%,0.1)] flex items-center justify-center shrink-0">
+                <ShieldCheck className="w-5 h-5 text-[hsl(var(--tc-green))]" />
+              </div>
+              <div>
+                <p className="text-sm font-bold mb-0.5">Sécurité & Caution</p>
+                <p className="text-[11px] text-muted-foreground">Exiger une caution renforce la confiance et réduit les risques de retard.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6 border-t border-border bg-card">
+          <button
+            onClick={closeIntro}
+            className="w-full py-4 rounded-xl font-bold text-white tc-gradient-green tc-shadow-green"
+          >
+            J'ai compris, commencer →
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-slide-up">
