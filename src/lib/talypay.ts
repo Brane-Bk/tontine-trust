@@ -40,7 +40,7 @@ export async function initPayment(payload: PaymentPayload): Promise<TalyPayRespo
       headers: {
         Authorization: `Bearer ${TALYPAY_TOKEN}`,
         "Content-Type": "application/json",
-        "Request-Environment": "sandbox" // Requis par l'API TalyPay
+        "Request-Environment": "production" // Requis par l'API TalyPay
       },
       body: JSON.stringify({
         amount: payload.amount,
@@ -52,35 +52,11 @@ export async function initPayment(payload: PaymentPayload): Promise<TalyPayRespo
 
     apiResponse = await response.json();
     apiSuccess = response.ok;
-    
-    // Fallback: Si on est en environnement Sandbox et que l'API renvoie 400
-    // à cause d'un paramètre manquant non documenté, on simule un succès
-    // pour garantir la fluidité de l'expérience utilisateur.
-    if (!response.ok && apiResponse?.response_code === 400 && TALYPAY_TOKEN.startsWith("tk_test_")) {
-      console.warn("TalyPay Sandbox fallback triggered. Original error:", apiResponse);
-      apiSuccess = true;
-      apiResponse = {
-        reference: "TT-" + Math.random().toString(36).substring(2, 10).toUpperCase(),
-        status: "pending",
-        message: "Paiement initié avec succès (Sandbox Fallback)",
-      };
-    }
-    
   } catch (networkError: any) {
     // Erreur réseau ou CORS
     console.error("TalyPay API Error:", networkError);
     apiResponse = { message: networkError.message || "Erreur réseau" };
     apiSuccess = false;
-    
-    // Fallback agressif pour le mode sandbox si CORS bloque
-    if (TALYPAY_TOKEN.startsWith("tk_test_")) {
-       apiSuccess = true;
-       apiResponse = {
-         reference: "TT-CORS-" + Math.random().toString(36).substring(2, 8).toUpperCase(),
-         status: "pending",
-         message: "Paiement simulé (CORS Fallback)",
-       };
-    }
   }
 
   // Persister la transaction dans Supabase (succès ou échec)
