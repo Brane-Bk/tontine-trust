@@ -1,13 +1,30 @@
 import TopBar from "@/components/layout/TopBar";
 import ProgressBar from "@/components/ui/ProgressBar";
-import { currentUser, scoreBreakdown } from "@/data/mockData";
+import { useAuth } from "@/hooks/useAuth";
+
+const scoreBreakdown = [
+  { label: "Ponctualité", key: "score", weight: 40, color: "green" as const },
+  { label: "Participation", key: "groups_count", weight: 25, color: "blue" as const },
+  { label: "Ancienneté", key: "cycles_completed", weight: 20, color: "purple" as const },
+  { label: "Fiabilité", key: "score", weight: 15, color: "amber" as const },
+];
+
+function getLabel(score: number) {
+  if (score >= 800) return "Excellent";
+  if (score >= 600) return "Bien";
+  if (score >= 400) return "Moyen";
+  return "À améliorer";
+}
 
 export default function Score() {
-  const scorePercent = (currentUser.score / currentUser.maxScore) * 100;
+  const { profile } = useAuth();
+  const score = profile?.score ?? 0;
+  const maxScore = profile?.max_score ?? 1000;
+  const scorePercent = (score / maxScore) * 100;
 
   return (
     <div className="animate-fade-in">
-      <TopBar title="Score Gbè" backTo="/home" backLabel="Accueil" />
+      <TopBar title="Score de confiance" backTo="/home" backLabel="Accueil" />
       <div className="px-4 pb-6">
         {/* Score circle */}
         <div className="flex flex-col items-center mb-6">
@@ -23,12 +40,12 @@ export default function Score() {
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-3xl font-bold">{currentUser.score}</span>
-              <span className="text-[10px] text-muted-foreground">/ {currentUser.maxScore}</span>
+              <span className="text-3xl font-bold">{score}</span>
+              <span className="text-[10px] text-muted-foreground">/ {maxScore}</span>
             </div>
           </div>
           <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[hsla(160,84%,39%,0.12)] text-[hsl(var(--tc-green))]">
-            Excellent
+            {getLabel(score)}
           </span>
         </div>
 
@@ -38,18 +55,18 @@ export default function Score() {
             <div key={s.label} className="bg-card border border-border rounded-xl p-3">
               <div className="flex justify-between text-xs mb-1.5">
                 <span className="font-semibold">{s.label}</span>
-                <span className="text-muted-foreground">{s.value}% · poids {s.weight}%</span>
+                <span className="text-muted-foreground">poids {s.weight}%</span>
               </div>
-              <ProgressBar value={s.value} color={s.color} />
+              <ProgressBar value={scorePercent} color={s.color} />
             </div>
           ))}
         </div>
 
         {/* Tips */}
         <div className="p-3 rounded-xl bg-[hsla(217,91%,60%,0.08)] border border-[hsla(217,91%,60%,0.15)]">
-          <p className="text-[11px] font-semibold text-[hsl(var(--tc-blue))] mb-1">💡 Conseil</p>
+          <p className="text-[11px] font-semibold text-[hsl(var(--tc-blue))] mb-1">💡 Comment améliorer votre score ?</p>
           <p className="text-[11px] text-muted-foreground leading-relaxed">
-            Cotisez à temps pour maintenir votre score. Un score ≥ 700 débloque les groupes Premium.
+            Cotisez à temps (+5 pts/cotisation), rejoignez des groupes et évitez les pénalités (-20 pts). Un score ≥ 700 débloque les groupes Premium.
           </p>
         </div>
       </div>
