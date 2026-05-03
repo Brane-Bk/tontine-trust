@@ -15,7 +15,11 @@ const OPERATORS = [
   { id: "wallet", name: "Portefeuille Tontine", shortName: "Wallet", color: "#10B981", textColor: "#fff" },
 ];
 
-interface Group { id: string; name: string; contribution_amount: number; }
+interface Group { 
+  id: string; 
+  name: string; 
+  contribution_amount: number; 
+}
 
 type PayStep = "form" | "confirm" | "processing" | "done" | "error";
 
@@ -48,14 +52,19 @@ export default function Cotiser() {
   const total = (selectedGroup?.contribution_amount || 0) + fees;
 
   const handleConfirm = async () => {
-    if (!user || !selectedGroup || !phone || phone.replace(/[\s+\d]/g, "").length > 0 || phone.replace(/\D/g, "").length < 8) {
+    const needPhone = operator !== "wallet";
+    const digits = phone.replace(/\D/g, "");
+    if (!user || !selectedGroup) {
+      toast.error("Sélectionnez un groupe");
+      return;
+    }
+    if (needPhone && digits.length < 8) {
       toast.error("Numéro de téléphone invalide");
       return;
     }
     setStep("processing");
 
-    // Sauvegarder le numéro dans le profil
-    if (phone !== profile?.phone) {
+    if (needPhone && phone !== profile?.phone) {
       await supabase.from("profiles").update({ phone }).eq("id", user.id);
     }
 
@@ -305,14 +314,16 @@ export default function Cotiser() {
           </div>
           <h2 className="text-xl font-bold mb-1">Paiement initié !</h2>
           
-          {payResult.message?.includes("Test") && (
-            <div className="mb-4 inline-block px-3 py-1 bg-[hsla(38,92%,50%,0.15)] text-[hsl(var(--tc-amber))] text-xs font-bold rounded-full">
-              ⚠️ MODE TEST : Faux argent
+          {(payResult.message?.includes("Test") || payResult.message?.includes("démo") || payResult.message?.includes("direct")) && (
+            <div className="mb-4 inline-block px-3 py-1 bg-[hsla(45,35%,88%,0.9)] text-[hsl(35,25%,35%)] text-xs font-medium rounded-full border border-[hsla(35,20%,80%,0.8)]">
+              Démo : flux fictif, aucun virement bancaire réel
             </div>
           )}
           
           <p className="text-xs text-muted-foreground mb-6">
-            {operator === "wallet" ? "Cotisation validée avec succès." : "Validez la demande sur votre téléphone pour finaliser"}
+            {operator === "wallet"
+              ? "Montant prélevé sur votre portefeuille Tontine (pas de crédit supplémentaire)."
+              : "Paiement direct : le solde de votre portefeuille Tontine ne change pas ; la cotisation va à la cagnotte du groupe."}
           </p>
 
           <div className="bg-card border border-border rounded-2xl p-4 text-left mb-4">
@@ -336,12 +347,14 @@ export default function Cotiser() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-[hsla(38,92%,50%,0.08)] border border-[hsla(38,92%,50%,0.2)] rounded-xl p-3 mb-6 text-left">
-            <span>⏳</span>
-            <p className="text-[11px] text-[hsl(var(--tc-amber))] font-medium">
-              En attente de votre validation sur {phone}
-            </p>
-          </div>
+          {operator !== "wallet" && (
+            <div className="flex items-center gap-2 bg-[hsla(45,30%,94%,0.95)] border border-[hsla(35,18%,85%,0.7)] rounded-xl p-3 mb-6 text-left">
+              <span aria-hidden>⏳</span>
+              <p className="text-[11px] text-muted-foreground font-medium">
+                Si vous payez par Mobile Money, validez la demande sur {phone}
+              </p>
+            </div>
+          )}
 
           <button onClick={() => navigate("/home")} className="w-full py-3 rounded-xl text-sm font-semibold text-white tc-gradient-green tc-shadow-green mb-3">
             Retour à l'accueil

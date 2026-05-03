@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import TopBar from "@/components/layout/TopBar";
 import { useAuth } from "@/hooks/useAuth";
-import { Clock, Bell, Settings, ChevronRight, LogOut } from "lucide-react";
+import { Clock, Bell, Settings, ChevronRight, LogOut, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 function formatFCFA(amount: number) {
@@ -18,7 +18,29 @@ export default function Profil() {
     navigate("/connexion");
   };
 
-  if (!profile) return null;
+  if (!profile) {
+    return (
+      <div className="flex flex-col min-h-screen items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 rounded-full bg-[hsla(0,84%,60%,0.1)] flex items-center justify-center mb-4">
+          <ShieldCheck className="w-8 h-8 text-[hsl(var(--tc-red))]" />
+        </div>
+        <h2 className="text-lg font-bold mb-2">Profil non trouvé</h2>
+        <p className="text-sm text-muted-foreground mb-6">Nous n'avons pas pu charger votre profil blockchain. Cela peut être dû à une synchronisation en cours.</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="w-full py-3 rounded-xl font-semibold text-white tc-gradient-green"
+        >
+          Réessayer
+        </button>
+        <button 
+          onClick={handleSignOut} 
+          className="mt-4 text-xs text-muted-foreground underline"
+        >
+          Se déconnecter
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-in">

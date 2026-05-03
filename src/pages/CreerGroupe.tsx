@@ -9,7 +9,7 @@ import { Info, ShieldCheck, TrendingUp, Users } from "lucide-react";
 
 export default function CreerGroupe() {
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [showIntro, setShowIntro] = useState(false);
@@ -63,39 +63,16 @@ export default function CreerGroupe() {
           frequency: form.frequency,
           max_members: maxMembers,
           total_rounds: maxMembers,
+          penalty_rate: parseFloat(form.penalty) || 5,
+          guarantee_deposit: parseFloat(form.guarantee) || 0,
+          order_type: form.order,
+          status: "pending",
+          created_by: user.id,
         })
         .select()
         .single();
 
-      // If initial insert failed due to schema cache, retry without optional columns
-      if (error) {
-        // Schema cache may not have the new columns yet - try minimal insert
-        const { data: data2, error: error2 } = await supabase
-          .from("groups")
-          .insert({
-            name: form.name,
-            initials,
-            color,
-            contribution_amount: parseFloat(form.amount),
-            frequency: form.frequency,
-            max_members: maxMembers,
-            total_rounds: maxMembers,
-            status: "pending",
-            created_by: user.id,
-          })
-          .select()
-          .single();
-        if (error2) throw error2;
-        Object.assign(data || {}, data2);
-        if (!data) throw error2;
-      }
-
-      // Patch the optional columns separately (handles schema cache lag)
-      await supabase.from("groups").update({
-        penalty_rate: parseFloat(form.penalty) || 5,
-        guarantee_deposit: parseFloat(form.guarantee) || 0,
-        order_type: form.order,
-      }).eq("id", data!.id).then(() => null).catch(() => null); // Non-blocking
+      if (error) throw error;
 
       // Add creator as admin member
       await supabase.from("group_members").insert({
@@ -104,13 +81,14 @@ export default function CreerGroupe() {
         role: "admin",
         turn_order: 1,
         status: "waiting",
+        guarantee_status: "verified" // Creator doesn't need to pay guarantee to themselves? 
+                                     // Actually, if there is a guarantee_deposit, they might still need to pay it.
+                                     // For simplicity in the prototype, we mark them verified.
       });
 
-      // Update groups_count in profile
-      await supabase
-        .from("profiles")
-        .update({ groups_count: (profile?.groups_count || 0) + 1 })
-        .eq("id", user.id);
+      // Profile updates are now handled by triggers (groups_count)
+      // but let's refresh to be sure
+      await refreshProfile();
 
       toast.success("Groupe créé avec succès !");
       navigate(`/groupe/${data!.id}`);
@@ -220,9 +198,10 @@ export default function CreerGroupe() {
                 onChange={(e) => setForm({ ...form, frequency: e.target.value })}
                 className="w-full px-3 py-2.5 rounded-xl border border-border bg-card text-sm outline-none"
               >
-                <option>Mensuelle</option>
-                <option>Hebdomadaire</option>
-                <option>Bi-mensuelle</option>
+                <option value="Mensuelle">Mensuelle</option>
+                <option value="Hebdomadaire">Hebdomadaire</option>
+                <option value="Bimensuelle">Bi-mensuelle (15 jours)</option>
+                <option value="Trimestrielle">Trimestrielle</option>
               </select>
             </div>
             <div>

@@ -3,6 +3,11 @@ import { supabase } from "@/lib/supabase";
 const TALYPAY_BASE_URL = "https://www.talypay-me.com/api/v1";
 const TALYPAY_TOKEN = import.meta.env.VITE_TALYPAY_TOKEN;
 
+/** Démo : crédit / débit immédiat côté DB (triggers). Mettre VITE_DEMO_PAYMENTS=false en prod avec webhooks réels. */
+function useImmediateDemoSettlement(): boolean {
+  return import.meta.env.VITE_DEMO_PAYMENTS !== "false";
+}
+
 export interface PaymentPayload {
   amount: number;
   currency?: string;
@@ -36,7 +41,7 @@ export async function payFromWallet(payload: Omit<PaymentPayload, "customer_phon
 
   const ref = "WT-" + Math.random().toString(36).substring(2, 10).toUpperCase();
 
-  const { data: txData } = await supabase.from("transactions").insert({
+  const { error: txErr } = await supabase.from("transactions").insert({
     profile_id: payload.profile_id,
     group_id: payload.group_id || null,
     type: payload.transaction_type,
@@ -45,6 +50,11 @@ export async function payFromWallet(payload: Omit<PaymentPayload, "customer_phon
     talypay_reference: ref,
     talypay_status: "wallet_transfer",
   }).select().single();
+
+  if (txErr) {
+    console.error("[payFromWallet]", txErr);
+    return { success: false, message: txErr.message || "Échec du paiement portefeuille" };
+  }
 
   return {
     success: true,
@@ -61,29 +71,53 @@ export async function initPayment(payload: PaymentPayload): Promise<TalyPayRespo
   let apiResponse: any = null;
   let apiSuccess = false;
   let simulated = false;
+  const demoImmediate = useImmediateDemoSettlement();
+  const skipRemote = demoImmediate && !TALYPAY_TOKEN;
 
-  try {
-    const response = await fetch(`${TALYPAY_BASE_URL}/init-payment`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${TALYPAY_TOKEN}`,
-        "Content-Type": "application/json",
-        "Request-Environment": "production" 
-      },
-      body: JSON.stringify({
-        amount: payload.amount,
-        currency: payload.currency || "XOF",
-        customer_phone: payload.customer_phone,
-        payment_mode: payload.operator?.toUpperCase() || "MTN",
-      }),
-    });
+  if (skipRemote) {
+    apiSuccess = true;
+    simulated = true;
+    const isDeposit = payload.transaction_type === "deposit";
+    apiResponse = {
+      reference: "TT-DEMO-" + Math.random().toString(36).substring(2, 10).toUpperCase(),
+      status: "simulated_success",
+      message: isDeposit
+        ? "Crédit portefeuille (démo)"
+        : "Cotisation enregistrée — votre portefeuille Tontine n’est pas crédité (paiement direct).",
+    };
+  } else {
+    try {
+      const response = await fetch(`${TALYPAY_BASE_URL}/init-payment`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${TALYPAY_TOKEN}`,
+          "Content-Type": "application/json",
+          "Request-Environment": "production",
+        },
+        body: JSON.stringify({
+          amount: payload.amount,
+          currency: payload.currency || "XOF",
+          customer_phone: payload.customer_phone,
+          payment_mode: payload.operator?.toUpperCase() || "MTN",
+        }),
+      });
 
-    apiResponse = await response.json();
-    apiSuccess = response.ok;
-    
-    // Mode Test Fallback (pour les démos)
-    if (!response.ok && apiResponse?.response_code === 400) {
-      console.warn("TalyPay API rejected the request. Falling back to simulated success for testing.");
+      apiResponse = await response.json();
+      apiSuccess = response.ok;
+
+      // Mode Test Fallback (pour les démos)
+      if (!response.ok && apiResponse?.response_code === 400) {
+        console.warn("TalyPay API rejected the request. Falling back to simulated success for testing.");
+        apiSuccess = true;
+        simulated = true;
+        apiResponse = {
+          reference: "TT-TEST-" + Math.random().toString(36).substring(2, 8).toUpperCase(),
+          status: "pending",
+          message: "Paiement simulé avec succès (Mode Test)",
+        };
+      }
+    } catch (networkError: unknown) {
+      console.error("TalyPay API Error:", networkError);
       apiSuccess = true;
       simulated = true;
       apiResponse = {
@@ -92,32 +126,43 @@ export async function initPayment(payload: PaymentPayload): Promise<TalyPayRespo
         message: "Paiement simulé avec succès (Mode Test)",
       };
     }
-  } catch (networkError: any) {
-    console.error("TalyPay API Error:", networkError);
-    // Mode Test Fallback (CORS)
-    apiSuccess = true;
-    simulated = true;
-    apiResponse = {
-      reference: "TT-TEST-" + Math.random().toString(36).substring(2, 8).toUpperCase(),
-      status: "pending",
-      message: "Paiement simulé avec succès (Mode Test)",
-    };
   }
 
-  const { data: txData } = await supabase
+  // Dépôt = crédit (montant > 0 dans la DB, voir fn_update_profile_on_transaction). Autres = débit.
+  const abs = Math.abs(payload.amount);
+  const signedAmount =
+    payload.transaction_type === "deposit" ? abs : -abs;
+
+  const triggersApply = simulated || demoImmediate;
+  const txStatus =
+    !apiSuccess
+      ? "failed"
+      : triggersApply
+        ? "simulated_success"
+        : "pending";
+
+  const { data: txData, error: txErr } = await supabase
     .from("transactions")
     .insert({
       profile_id: payload.profile_id,
       group_id: payload.group_id || null,
       type: payload.transaction_type,
       name: payload.transaction_name,
-      amount: -Math.abs(payload.amount), // sortie d'argent = négatif
+      amount: signedAmount,
       talypay_reference: apiResponse?.reference || apiResponse?.transaction_id || null,
-      talypay_status: simulated ? "simulated_success" : (apiSuccess ? "pending" : "failed"),
+      talypay_status: txStatus,
       customer_phone: payload.customer_phone,
     })
     .select()
     .single();
+
+  if (txErr) {
+    console.error("[initPayment] insert transaction:", txErr);
+    return {
+      success: false,
+      message: txErr.message || "Impossible d'enregistrer la transaction",
+    };
+  }
 
   // Persister dans payment_requests
   await supabase.from("payment_requests").insert({
@@ -127,7 +172,7 @@ export async function initPayment(payload: PaymentPayload): Promise<TalyPayRespo
     amount: payload.amount,
     currency: payload.currency || "XOF",
     customer_phone: payload.customer_phone,
-    status: simulated ? "simulated_success" : (apiSuccess ? "pending" : "failed"),
+    status: txStatus === "failed" ? "failed" : txStatus === "simulated_success" ? "simulated_success" : "pending",
     api_response: apiResponse,
   });
 
@@ -142,10 +187,10 @@ export async function initPayment(payload: PaymentPayload): Promise<TalyPayRespo
   return {
     success: true,
     reference: apiResponse?.reference || apiResponse?.transaction_id || txData?.id,
-    status: apiResponse?.status || "pending",
+    status: txStatus === "simulated_success" ? "simulated_success" : apiResponse?.status || "pending",
     amount: payload.amount,
     currency: payload.currency || "XOF",
-    message: apiResponse?.message || "Paiement initié avec succès",
+    message: apiResponse?.message || (simulated ? "Virement fictif (démo)" : "Paiement initié avec succès"),
     raw: apiResponse,
   };
 }

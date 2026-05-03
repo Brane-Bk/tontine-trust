@@ -1,21 +1,22 @@
 import { useNavigate } from "react-router-dom";
-import { Bell } from "lucide-react";
+import { Bell, ShieldCheck } from "lucide-react";
 import TCAvatar from "@/components/ui/tc-avatar";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { runTontineAutomation } from "@/lib/tontineAutomation";
 
 interface Group {
   id: string;
   name: string;
   initials: string;
-  color: "green" | "blue" | "amber" | "purple" | "red";
+  color: string;
   contribution_amount: number;
   current_round: number;
   total_rounds: number;
   total_pool: number;
-  status: string;
+  status: "pending" | "active" | "completed" | "cancelled";
 }
 
 function formatFCFA(amount: number) {
@@ -35,21 +36,25 @@ export default function Home() {
 
   useEffect(() => {
     if (!user) return;
-    // Fetch groups the user belongs to
-    supabase
-      .from("group_members")
-      .select("group_id, groups(*)")
-      .eq("profile_id", user.id)
-      .then(({ data }) => {
-        if (data) setGroups(data.map((d: any) => d.groups).filter(Boolean));
-      });
-    // Fetch unread notifications count
-    supabase
-      .from("notifications")
-      .select("id", { count: "exact" })
-      .eq("profile_id", user.id)
-      .eq("is_read", false)
-      .then(({ count }) => setUnreadCount(count ?? 0));
+    let cancelled = false;
+    (async () => {
+      await runTontineAutomation();
+      if (cancelled) return;
+      const [{ data: gm }, { count }] = await Promise.all([
+        supabase.from("group_members").select("group_id, groups(*)").eq("profile_id", user.id),
+        supabase
+          .from("notifications")
+          .select("id", { count: "exact", head: true })
+          .eq("profile_id", user.id)
+          .eq("is_read", false),
+      ]);
+      if (cancelled) return;
+      if (gm) setGroups(gm.map((d) => (d as { groups: Group }).groups).filter(Boolean));
+      setUnreadCount(count ?? 0);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   return (
@@ -109,19 +114,26 @@ export default function Home() {
                 onClick={() => navigate(`/groupe/${g.id}`)}
                 className="w-full bg-card border border-border rounded-xl p-3 text-left transition-colors hover:border-[hsl(var(--tc-green))]"
               >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2.5">
+                <div className="flex items-center justify-between mb-2 gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
                     <TCAvatar initials={g.initials} color={g.color} />
-                    <div>
-                      <p className="text-sm font-semibold">{g.name}</p>
-                      <p className="text-[11px] text-muted-foreground">Tour {g.current_round}/{g.total_rounds} · {formatFCFA(g.contribution_amount)}</p>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-sm font-semibold truncate">{g.name}</p>
+                        <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-[hsla(160,40%,42%,0.12)] text-[8px] font-semibold text-[hsl(var(--tc-green))] uppercase tracking-tight shrink-0">
+                          <ShieldCheck className="w-2 h-2" /> On-chain
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Tour {g.current_round}/{g.total_rounds} · {formatFCFA(g.contribution_amount)}
+                      </p>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className={`text-sm font-bold ${g.total_pool > 0 ? "text-[hsl(var(--tc-green))]" : "text-muted-foreground"}`}>
                       {g.total_pool > 0 ? `+${formatCompact(g.total_pool)}` : "0"}
                     </p>
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[hsla(160,84%,39%,0.1)] text-[hsl(var(--tc-green))]">Actif</span>
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-[hsla(160,35%,45%,0.12)] text-[hsl(var(--tc-green))]">Actif</span>
                   </div>
                 </div>
                 <ProgressBar value={(g.current_round / g.total_rounds) * 100} color={g.color} />

@@ -10,10 +10,10 @@ import { Loader2, Check, Users } from "lucide-react";
 
 interface Group {
   id: string; name: string; initials: string;
-  contribution_amount: number; frequency: string;
+  contribution_amount: number; frequency: "Hebdomadaire" | "Bimensuelle" | "Mensuelle" | "Trimestrielle";
   members_count: number; max_members: number;
   penalty_rate: number; guarantee_deposit: number;
-  min_score: number; status: string;
+  min_score: number; status: "pending" | "active" | "completed" | "cancelled";
 }
 
 function formatFCFA(n: number) { return new Intl.NumberFormat("fr-FR").format(n) + " FCFA"; }
@@ -152,7 +152,6 @@ export default function Rejoindre() {
           setStep("guarantee");
           return;
         }
-        status = "waiting_guarantee";
       }
 
       const nextTurn = group.members_count + 1;
@@ -162,7 +161,7 @@ export default function Rejoindre() {
         profile_id: user.id,
         role: "member",
         turn_order: nextTurn,
-        status: status,
+        status: "waiting",
         guarantee_type: guaranteeType,
         guarantee_proof: guaranteeProof,
         guarantee_status: guaranteeType === "money" ? "verified" : "pending"

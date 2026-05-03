@@ -12,7 +12,7 @@
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 160 84% 39%;
+    --primary: 160 42% 38%;
     --primary-foreground: 0 0% 100%;
     --secondary: 210 40% 96%;
     --secondary-foreground: 222 47% 11%;
@@ -24,7 +24,7 @@
     --destructive-foreground: 0 0% 100%;
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 160 84% 39%;
+    --ring: 160 42% 38%;
     --radius: 0.75rem;
 
     /* TontineChain custom tokens - light */
@@ -37,8 +37,8 @@
     --tc-text-primary: 222 47% 11%;
     --tc-text-secondary: 215 19% 35%;
     --tc-text-tertiary: 213 14% 62%;
-    --tc-green: 160 84% 39%;
-    --tc-green-dark: 160 84% 32%;
+    --tc-green: 160 42% 38%;
+    --tc-green-dark: 160 40% 32%;
     --tc-blue: 217 91% 60%;
     --tc-amber: 38 92% 50%;
     --tc-red: 0 84% 60%;
@@ -52,7 +52,7 @@
     --card-foreground: 216 20% 95%;
     --popover: 222 33% 11%;
     --popover-foreground: 216 20% 95%;
-    --primary: 160 84% 39%;
+    --primary: 160 38% 45%;
     --primary-foreground: 0 0% 100%;
     --secondary: 220 26% 17%;
     --secondary-foreground: 216 20% 95%;
@@ -64,7 +64,7 @@
     --destructive-foreground: 216 20% 95%;
     --border: 220 26% 17%;
     --input: 220 26% 17%;
-    --ring: 160 84% 39%;
+    --ring: 160 38% 45%;
 
     /* TontineChain custom tokens - dark */
     --tc-body: 220 47% 6%;
@@ -76,8 +76,8 @@
     --tc-text-primary: 216 20% 95%;
     --tc-text-secondary: 0 0% 100% / 0.5;
     --tc-text-tertiary: 0 0% 100% / 0.3;
-    --tc-green: 160 84% 39%;
-    --tc-green-dark: 160 84% 32%;
+    --tc-green: 160 38% 45%;
+    --tc-green-dark: 160 36% 38%;
     --tc-blue: 217 91% 60%;
     --tc-amber: 38 92% 50%;
     --tc-red: 0 84% 60%;
@@ -98,13 +98,19 @@
 
 @layer utilities {
   .tc-gradient-green {
-    background: linear-gradient(135deg, hsl(160 84% 32%), hsl(160 84% 39%));
+    background: linear-gradient(135deg, hsl(160 40% 32%), hsl(160 42% 40%));
+  }
+  .tc-gradient-green-soft {
+    background: linear-gradient(135deg, hsl(160 38% 34%), hsl(160 40% 42%));
   }
   .tc-gradient-hero {
-    background: linear-gradient(135deg, hsl(160 84% 32%), hsl(160 84% 39%));
+    background: linear-gradient(135deg, hsl(160 38% 30%), hsl(160 40% 38%));
   }
   .tc-shadow-green {
-    box-shadow: 0 4px 20px hsla(160, 84%, 39%, 0.3);
+    box-shadow: 0 4px 18px hsla(160, 40%, 36%, 0.22);
+  }
+  .tc-shadow-green-soft {
+    box-shadow: 0 3px 14px hsla(160, 38%, 38%, 0.18);
   }
   .tc-shadow-card {
     box-shadow: 0 1px 3px hsla(0, 0%, 0%, 0.1), 0 1px 2px hsla(0, 0%, 0%, 0.06);
@@ -118,6 +124,58 @@
   .animate-check-bounce {
     animation: checkBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
+  .tc-grid-bg {
+    background-image: 
+      linear-gradient(to right, hsla(160, 20%, 42%, 0.07) 1px, transparent 1px),
+      linear-gradient(to bottom, hsla(160, 20%, 42%, 0.07) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  .dark .tc-grid-bg {
+    background-image: 
+      linear-gradient(to right, hsla(160, 15%, 55%, 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, hsla(160, 15%, 55%, 0.06) 1px, transparent 1px);
+  }
+  .tc-grid-bg-soft {
+    background-image:
+      linear-gradient(to right, hsla(160, 18%, 45%, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, hsla(160, 18%, 45%, 0.05) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  .dark .tc-grid-bg-soft {
+    background-image:
+      linear-gradient(to right, hsla(160, 12%, 60%, 0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, hsla(160, 12%, 60%, 0.04) 1px, transparent 1px);
+  }
+  .tc-glimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .tc-glimmer::after {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+      45deg,
+      transparent 0%,
+      transparent 40%,
+      hsla(0, 0%, 100%, 0.1) 50%,
+      transparent 60%,
+      transparent 100%
+    );
+    animation: glimmer 3s infinite;
+  }
+  .font-mono-tech {
+    font-family: 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', monospace;
+    letter-spacing: -0.02em;
+  }
+}
+
+@keyframes glimmer {
+  0% { transform: translateX(-30%) translateY(-30%) rotate(0deg); }
+  100% { transform: translateX(30%) translateY(30%) rotate(0deg); }
 }
 
 @keyframes fadeIn {

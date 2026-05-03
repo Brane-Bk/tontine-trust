@@ -3,17 +3,19 @@ import { useNavigate } from "react-router-dom";
 import TopBar from "@/components/layout/TopBar";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import PhoneInput from "@/components/ui/PhoneInput";
 
 export default function Inscription() {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+    const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
   const handleSignUp = async () => {
-    if (!email || !name || password.length < 6) {
+    if (!email || !name || !phone || password.length < 6) {
       toast.error("Veuillez remplir tous les champs et entrer un mot de passe d'au moins 6 caractères");
       return;
     }
@@ -23,7 +25,7 @@ export default function Inscription() {
         email,
         password,
         options: {
-          data: { name }
+          data: { name, phone }
         }
       });
       
@@ -35,7 +37,14 @@ export default function Inscription() {
         setLoading(false);
         return;
       }
-      
+
+      // Confirmation email désactivée dans Supabase → session immédiate
+      if (data.session) {
+        toast.success("Compte créé ! Bienvenue.");
+        navigate("/home", { replace: true });
+        return;
+      }
+
       setIsSuccess(true);
       toast.success("Vérifiez vos emails pour confirmer votre compte !");
     } catch (error: any) {
@@ -74,6 +83,13 @@ export default function Inscription() {
                 className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-card text-sm outline-none focus:border-[hsl(var(--tc-green))] transition-colors"
               />
             </div>
+
+            <PhoneInput 
+              label="Numéro de téléphone"
+              value={phone}
+              onChange={setPhone}
+              className="mb-4"
+            />
 
             <label className="block text-xs font-medium text-muted-foreground mb-1.5">Mot de passe</label>
             <div className="flex gap-2 mb-6">

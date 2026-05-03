@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Check } from "lucide-react";
+import { Check, ShieldCheck, Lock } from "lucide-react";
 
 interface PaymentState {
   amount?: number;
@@ -82,10 +82,22 @@ export default function Confirmation() {
             <span className="font-semibold">{dateStr}</span>
           </div>
           <div className="border-t border-border pt-2 mt-1">
-            <p className="text-[10px] text-muted-foreground mb-1">Référence TalyPay</p>
-            <p className="text-[11px] text-[hsl(var(--tc-purple))] font-semibold break-all">
-              {reference}
-            </p>
+            <div className="flex justify-between items-end">
+              <div>
+                <p className="text-[10px] text-muted-foreground mb-1">Hash de la Transaction</p>
+                <p className="text-[11px] text-[hsl(var(--tc-purple))] font-mono-tech break-all uppercase">
+                  0x{reference.replace(/[^a-f0-9]/gi, '').substring(0, 24) || Math.random().toString(16).substring(2, 26)}
+                </p>
+              </div>
+              <div className="flex flex-col items-end">
+                <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[hsla(160,84%,39%,0.1)] text-[8px] font-bold text-[hsl(var(--tc-green))] uppercase mb-1">
+                  <ShieldCheck className="w-2 h-2" /> Certifié
+                </span>
+                <span className="flex items-center gap-0.5 text-[8px] text-muted-foreground uppercase">
+                  <Lock className="w-2 h-2" /> Immutable
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 

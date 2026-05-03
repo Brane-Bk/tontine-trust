@@ -1,8 +1,15 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Shield } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Splash() {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && user) navigate("/home", { replace: true });
+  }, [loading, user, navigate]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-6 animate-fade-in">

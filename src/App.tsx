@@ -35,6 +35,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function GuestRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="flex min-h-screen items-center justify-center"><div className="w-8 h-8 rounded-full border-2 border-[hsl(var(--tc-green))] border-t-transparent animate-spin" /></div>;
+  if (user) return <Navigate to="/home" replace />;
+  return <>{children}</>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
@@ -46,8 +53,8 @@ const App = () => (
             <Routes>
               <Route element={<AppLayout />}>
                 <Route path="/" element={<Splash />} />
-                <Route path="/connexion" element={<Connexion />} />
-                <Route path="/inscription" element={<Inscription />} />
+                <Route path="/connexion" element={<GuestRoute><Connexion /></GuestRoute>} />
+                <Route path="/inscription" element={<GuestRoute><Inscription /></GuestRoute>} />
                 <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
                 <Route path="/rechercher" element={<ProtectedRoute><Rechercher /></ProtectedRoute>} />
                 <Route path="/rejoindre/:id" element={<ProtectedRoute><Rejoindre /></ProtectedRoute>} />

@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { initPayment } from "@/lib/talypay";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { toast } from "sonner";
-import { ArrowDownLeft, ArrowUpRight, Wallet, History, Loader2, Check } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Wallet, History, Check, Cpu, ShieldCheck } from "lucide-react";
 
 export default function Portefeuille() {
   const navigate = useNavigate();
@@ -17,10 +17,23 @@ export default function Portefeuille() {
   const [phone, setPhone] = useState(profile?.phone || "");
   const [operator, setOperator] = useState("MTN");
   const [step, setStep] = useState<"form" | "processing" | "success">("form");
+  const [transactions, setTransactions] = useState<any[]>([]);
+
+  const fetchTransactions = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("profile_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(10);
+    if (data) setTransactions(data);
+  };
 
   useEffect(() => {
     if (profile?.phone) setPhone(profile.phone);
-  }, [profile]);
+    fetchTransactions();
+  }, [profile, user]);
 
   const handleTransaction = async (type: "deposit" | "withdrawal") => {
     const amt = parseInt(amount);
@@ -48,6 +61,7 @@ export default function Portefeuille() {
 
       if (res.success) {
         await refreshProfile();
+        await fetchTransactions();
         setStep("success");
       } else {
         toast.error(res.message);
@@ -65,15 +79,21 @@ export default function Portefeuille() {
         customer_phone: phone,
       });
       await refreshProfile();
+      await fetchTransactions();
       setStep("success");
     }
   };
 
   if (step === "processing") {
     return (
-      <div className="flex flex-col min-h-screen items-center justify-center bg-background">
-        <Loader2 className="w-10 h-10 text-[hsl(var(--tc-green))] animate-spin mb-4" />
-        <p className="text-sm font-semibold">Traitement en cours...</p>
+      <div className="flex flex-col min-h-screen items-center justify-center bg-background tc-grid-bg">
+        <div className="relative w-16 h-16 mb-6">
+          <div className="absolute inset-0 rounded-full border-4 border-[hsl(var(--tc-green))] opacity-20 animate-ping" />
+          <div className="absolute inset-0 rounded-full border-4 border-[hsl(var(--tc-green))] border-t-transparent animate-spin" />
+          <Cpu className="absolute inset-0 m-auto w-6 h-6 text-[hsl(var(--tc-green))]" />
+        </div>
+        <p className="text-sm font-bold tracking-tight mb-1">VÉRIFICATION BLOCKCHAIN</p>
+        <p className="text-[10px] text-muted-foreground font-mono-tech animate-pulse">Hashing block {Math.random().toString(16).substring(2, 10)}...</p>
       </div>
     );
   }
@@ -125,14 +145,49 @@ export default function Portefeuille() {
         </div>
 
         {tab === "historique" && (
-          <div className="text-center py-10">
-            <History className="w-10 h-10 mx-auto text-muted mb-3 opacity-50" />
-            <p className="text-sm text-muted-foreground">Aucune transaction pour le moment.</p>
+          <div className="space-y-3">
+            {transactions.length === 0 ? (
+              <div className="text-center py-10">
+                <History className="w-10 h-10 mx-auto text-muted mb-3 opacity-50" />
+                <p className="text-sm text-muted-foreground">Aucune transaction pour le moment.</p>
+              </div>
+            ) : (
+              transactions.map((tx) => (
+                <div key={tx.id} className="bg-card border border-border rounded-xl p-3 relative overflow-hidden">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${tx.amount > 0 ? "bg-[hsla(160,84%,39%,0.1)] text-[hsl(var(--tc-green))]" : "bg-[hsla(0,84%,60%,0.1)] text-[hsl(var(--tc-red))]"}`}>
+                        {tx.amount > 0 ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold">{tx.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{new Date(tx.created_at).toLocaleDateString("fr-FR", { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                      </div>
+                    </div>
+                    <p className={`text-sm font-bold ${tx.amount > 0 ? "text-[hsl(var(--tc-green))]" : "text-[hsl(var(--tc-red))]"}`}>
+                      {tx.amount > 0 ? "+" : ""}{new Intl.NumberFormat("fr-FR").format(tx.amount)}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                    <div className="flex items-center gap-1">
+                      <ShieldCheck className="w-2.5 h-2.5 text-[hsl(var(--tc-green))]" />
+                      <span className="text-[9px] font-mono-tech text-muted-foreground">TxHash: 0x{tx.id.substring(0, 8)}...{tx.id.substring(tx.id.length - 4)}</span>
+                    </div>
+                    <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase tracking-tight">Sûr</span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         )}
 
         {tab !== "historique" && (
           <div className="animate-fade-in space-y-4">
+            {tab === "depot" && (
+              <p className="text-[10px] text-muted-foreground leading-relaxed rounded-lg bg-muted/50 border border-border/70 px-3 py-2">
+                Les dépôts effectués ici augmentent votre portefeuille. Un paiement direct pour cotiser (Mobile Money) n’augmente pas ce solde : il alimente uniquement la cagnotte du groupe.
+              </p>
+            )}
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1.5">Montant (FCFA)</label>
               <input
