@@ -186,7 +186,13 @@ export default function Home() {
                     <p className={`text-sm font-bold ${g.total_pool > 0 ? "text-[hsl(var(--tc-green))]" : "text-muted-foreground"}`}>
                       {g.total_pool > 0 ? `+${formatCompact(g.total_pool)}` : "0"}
                     </p>
-                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-[hsla(160,35%,45%,0.12)] text-[hsl(var(--tc-green))]">Actif</span>
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-md ${
+                      g.status === "active" ? "bg-[hsla(160,35%,45%,0.12)] text-[hsl(var(--tc-green))]" :
+                      g.status === "pending" ? "bg-[hsla(38,92%,50%,0.12)] text-[hsl(var(--tc-amber))]" :
+                      "bg-muted text-muted-foreground"
+                    }`}>
+                      {g.status === "active" ? "Actif" : g.status === "pending" ? "En attente" : "Terminé"}
+                    </span>
                   </div>
                 </div>
                 <ProgressBar value={(g.current_round / g.total_rounds) * 100} color={g.color} />

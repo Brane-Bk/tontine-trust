@@ -63,6 +63,7 @@ export default function Admin() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const selectedGroup = groups.find((g) => g.id === selectedGroupId) || groups[0] || null;
 
@@ -323,7 +324,7 @@ export default function Admin() {
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <span>Garantie</span>
-                      <span className="font-semibold text-foreground">{new Intl.NumberFormat("fr-FR").format(selectedGroup.guarantee_deposit)} FCFA</span>
+                      <span className="font-semibold text-foreground">Bancaire (Partenaire)</span>
                     </div>
                     <div className="rounded-3xl border border-[hsl(var(--tc-green))] bg-[hsla(160,84%,39%,0.08)] p-3 text-[11px] text-foreground">
                       <p className="font-semibold">Actions clés</p>
@@ -467,6 +468,10 @@ export default function Admin() {
                             <div className="rounded-full bg-[hsla(38,92%,50%,0.1)] px-3 py-1 text-[11px] font-semibold text-[hsl(var(--tc-amber))]">
                               {member.guarantee_status}
                             </div>
+                          </div>
+                          <div className="mt-2 p-2 rounded-lg bg-muted/50 border border-border">
+                            <p className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wider font-semibold">Compte Bancaire Fourni</p>
+                            <p className="text-xs font-mono">{member.guarantee_proof || "Non fourni"}</p>
                           </div>
                           <div className="mt-3 flex flex-wrap gap-2">
                             <button

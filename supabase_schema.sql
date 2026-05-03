@@ -349,6 +349,10 @@ CREATE POLICY "groups_update_owner"
     USING (auth.uid() = created_by)
     WITH CHECK (auth.uid() = created_by);
 
+CREATE POLICY "groups_delete_own"
+    ON public.groups FOR DELETE
+    USING (auth.uid() = created_by);
+
 
 -- ── group_members ─────────────────────────────────────────────────────────────
 ALTER TABLE public.group_members ENABLE ROW LEVEL SECURITY;
@@ -370,6 +374,17 @@ CREATE POLICY "gm_update_own"
     ON public.group_members FOR UPDATE
     USING (auth.uid() = profile_id)
     WITH CHECK (auth.uid() = profile_id);
+
+CREATE POLICY "gm_admin_update"
+    ON public.group_members FOR UPDATE
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.group_members
+            WHERE group_id = group_members.group_id
+              AND profile_id = auth.uid()
+              AND role = 'admin'
+        )
+    );
 
 
 -- ── transactions ──────────────────────────────────────────────────────────────
@@ -857,6 +872,24 @@ BEGIN
         WHERE group_id = g.id
           AND status = 'paid';
 
+        -- Logique Banque Partenaire : Si la date limite est passée, la banque avance les fonds
+        IF g.cotisation_deadline_at < timezone('utc', now()) AND v_paid < v_total THEN
+            -- Les membres qui n'ont pas payé sont marqués en retard
+            UPDATE public.group_members
+            SET status = 'late'
+            WHERE group_id = g.id
+              AND status = 'waiting';
+            
+            -- La banque complète la cagnotte
+            v_pool := v_total * g.contribution_amount;
+            v_paid := v_total;
+            
+            -- Note: On met à jour le pool dans la table aussi pour la cohérence
+            UPDATE public.groups SET total_pool = v_pool WHERE id = g.id;
+        ELSE
+            v_pool := g.total_pool;
+        END IF;
+
         IF v_total = 0 OR v_paid <> v_total THEN
             CONTINUE;
         END IF;
@@ -866,8 +899,6 @@ BEGIN
         WHERE group_id = g.id
           AND turn_order = g.current_round
         LIMIT 1;
-
-        v_pool := g.total_pool;
 
         IF v_benef IS NULL OR v_pool <= 0 THEN
             CONTINUE;
