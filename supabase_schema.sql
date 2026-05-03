@@ -20,8 +20,13 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
-    CREATE TYPE public.group_frequency   AS ENUM ('Hebdomadaire', 'Bimensuelle', 'Mensuelle', 'Trimestrielle');
+    CREATE TYPE public.group_frequency   AS ENUM ('Journalier', 'Hebdomadaire', 'Bimensuelle', 'Mensuelle', 'Trimestrielle');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Ajout idempotent si la valeur n'existe pas encore (migration safe)
+DO $$ BEGIN
+    ALTER TYPE public.group_frequency ADD VALUE IF NOT EXISTS 'Journalier' BEFORE 'Hebdomadaire';
+EXCEPTION WHEN OTHERS THEN NULL; END $$;
 
 DO $$ BEGIN
     CREATE TYPE public.group_order_type  AS ENUM ('vrf', 'manual', 'random', 'score_based');
@@ -504,11 +509,12 @@ RETURNS interval
 LANGUAGE sql
 IMMUTABLE AS $$
     SELECT CASE f
+        WHEN 'Journalier'::public.group_frequency     THEN interval '1 day'
         WHEN 'Hebdomadaire'::public.group_frequency   THEN interval '7 days'
         WHEN 'Bimensuelle'::public.group_frequency    THEN interval '14 days'
         WHEN 'Mensuelle'::public.group_frequency      THEN interval '30 days'
         WHEN 'Trimestrielle'::public.group_frequency  THEN interval '90 days'
-        ELSE interval '30 days'
+        ELSE interval '1 day'
     END;
 $$;
 

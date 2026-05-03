@@ -18,6 +18,7 @@ export default function Portefeuille() {
   const [operator, setOperator] = useState("MTN");
   const [step, setStep] = useState<"form" | "processing" | "success">("form");
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [hasLate, setHasLate] = useState(false); // cotisations en retard
 
   const fetchTransactions = async () => {
     if (!user) return;
@@ -33,12 +34,26 @@ export default function Portefeuille() {
   useEffect(() => {
     if (profile?.phone) setPhone(profile.phone);
     fetchTransactions();
+    // Check for late contributions
+    if (user) {
+      supabase
+        .from("group_members")
+        .select("id")
+        .eq("profile_id", user.id)
+        .eq("status", "late")
+        .limit(1)
+        .then(({ data }) => setHasLate((data?.length ?? 0) > 0));
+    }
   }, [profile, user]);
 
   const handleTransaction = async (type: "deposit" | "withdrawal") => {
     const amt = parseInt(amount);
     if (!amt || amt < 100) {
       toast.error("Montant invalide (min 100 FCFA)");
+      return;
+    }
+    if (type === "withdrawal" && hasLate) {
+      toast.error("Compte suspendu : régularisez vos cotisations en retard d'abord");
       return;
     }
     if (type === "withdrawal" && profile && amt > profile.wallet_balance) {
@@ -116,6 +131,28 @@ export default function Portefeuille() {
   return (
     <div className="min-h-screen bg-background pb-20">
       <TopBar title="Portefeuille" backTo="/home" backLabel="Accueil" />
+
+      {/* Bannière compte suspendu */}
+      {hasLate && (
+        <div className="mx-4 mt-3 mb-1 p-3 rounded-xl bg-[hsla(0,84%,60%,0.1)] border border-[hsla(0,84%,60%,0.3)]">
+          <div className="flex items-start gap-2.5">
+            <Lock className="w-4 h-4 text-[hsl(var(--tc-red))] mt-0.5 shrink-0" />
+            <div>
+              <p className="text-xs font-bold text-[hsl(var(--tc-red))] mb-0.5">⚠️ Compte suspendu</p>
+              <p className="text-[10px] text-muted-foreground leading-relaxed">
+                Vous avez des cotisations en <strong>retard</strong> dans un ou plusieurs groupes.
+                Les retraits sont bloqués jusqu’à régularisation. Cotisez maintenant pour débloquer.
+              </p>
+              <button
+                onClick={() => navigate("/cotiser")}
+                className="mt-2 text-[10px] font-bold text-[hsl(var(--tc-red))] underline"
+              >
+                → Régulariser mes cotisations
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="px-4 pt-4">
         <div className="bg-gradient-to-br from-[hsl(var(--tc-green))] to-[hsl(160,40%,26%)] rounded-2xl p-4 text-white shadow-xl mb-6 relative overflow-hidden border border-white/10">
@@ -155,7 +192,7 @@ export default function Portefeuille() {
             Déposer
           </button>
           <button onClick={() => setTab("retrait")} className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${tab === "retrait" ? "bg-background shadow text-[hsl(var(--tc-amber))]" : "text-muted-foreground"}`}>
-            Retirer
+            {hasLate ? "🔒 Retirer" : "Retirer"}
           </button>
         </div>
 

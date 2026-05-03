@@ -14,7 +14,7 @@ interface Group {
   initials: string;
   color: string;
   contribution_amount: number;
-  frequency: "Hebdomadaire" | "Bimensuelle" | "Mensuelle" | "Trimestrielle";
+  frequency: "Journalier" | "Hebdomadaire" | "Bimensuelle" | "Mensuelle" | "Trimestrielle";
   current_round: number;
   total_rounds: number;
   total_pool: number;
@@ -147,6 +147,14 @@ export default function GroupeDetail() {
           {formatFCFA(group.contribution_amount)} + {NETWORK_FEE} FCFA frais · {group.frequency.toLowerCase()}
           {group.penalty_rate > 0 && ` · pénalité ${group.penalty_rate}%`}
         </p>
+        {group.total_rounds > 0 && (
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            🏆 Cagnotte à chaque tour :{" "}
+            <strong className="text-[hsl(var(--tc-green))]">
+              {formatFCFA(group.contribution_amount * group.members_count)}
+            </strong>{" "}({group.members_count} membres × cotisation)
+          </p>
+        )}
       </div>
 
       {/* Registre blockchain — tons doux */}

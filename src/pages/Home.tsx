@@ -33,6 +33,7 @@ export default function Home() {
   const { profile, user } = useAuth();
   const [groups, setGroups] = useState<Group[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [hasLate, setHasLate] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -51,6 +52,14 @@ export default function Home() {
       if (cancelled) return;
       if (gm) setGroups(gm.map((d) => (d as { groups: Group }).groups).filter(Boolean));
       setUnreadCount(count ?? 0);
+      // Check late status
+      const { data: lateRows } = await supabase
+        .from("group_members")
+        .select("id")
+        .eq("profile_id", user.id)
+        .eq("status", "late")
+        .limit(1);
+      if (!cancelled) setHasLate((lateRows?.length ?? 0) > 0);
     })();
     return () => {
       cancelled = true;
@@ -124,6 +133,22 @@ export default function Home() {
 
         <p className="text-center text-[10px] text-white/55 mt-3">{profile?.groups_count ?? 0} groupe{(profile?.groups_count ?? 0) !== 1 ? "s" : ""} actif{(profile?.groups_count ?? 0) !== 1 ? "s" : ""}</p>
 
+        {hasLate && (
+          <div className="mt-3 p-2.5 rounded-xl bg-[hsla(0,84%,60%,0.2)] border border-[hsla(0,84%,60%,0.3)] flex items-center gap-2">
+            <Lock className="w-3.5 h-3.5 text-white shrink-0" />
+            <p className="text-[10px] text-white/90 font-medium flex-1">
+              Cotisation(s) en retard — compte suspendu
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate("/cotiser")}
+              className="text-[10px] font-bold text-white underline shrink-0"
+            >
+              Payer →
+            </button>
+          </div>
+        )}
+
         <div className="flex gap-2 mt-3">
           <button type="button" onClick={() => navigate("/cotiser")} className="flex-1 py-2.5 rounded-xl bg-white/20 text-xs font-semibold text-center backdrop-blur-sm border border-white/10">
             Cotiser
@@ -181,6 +206,29 @@ export default function Home() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Explication bloc TontineChain */}
+      <div className="px-4 pb-6">
+        <div className="rounded-xl border border-border bg-card p-4">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Comment fonctionne TontineChain ?</p>
+          <div className="space-y-2.5">
+            {[
+              { emoji: "🤝", title: "Tontine solidaire", desc: "Tous cotisent, chacun reçoit à son tour la cagnotte cumulée." },
+              { emoji: "⚡", title: "Versement automatique", desc: "Dès que tout le monde a payé, les fonds sont versés sans intervention." },
+              { emoji: "🔒", title: "Retard = compte suspendu", desc: "Pas de cotisation à l'échéance ? Votre portefeuille est bloqué jusqu'à régularisation." },
+              { emoji: "🛡️", title: "Smart Contract on-chain", desc: "Chaque groupe a un identifiant immuable. Les règles sont encodées et vérifiables." },
+            ].map((item) => (
+              <div key={item.title} className="flex gap-3 items-start">
+                <span className="text-base mt-0.5">{item.emoji}</span>
+                <div>
+                  <p className="text-[11px] font-semibold">{item.title}</p>
+                  <p className="text-[10px] text-muted-foreground">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

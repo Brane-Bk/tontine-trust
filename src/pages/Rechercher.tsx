@@ -132,7 +132,12 @@ export default function Rechercher() {
                     <div>
                       <p className="text-sm font-semibold">{g.name}</p>
                       <p className="text-[11px] text-muted-foreground">
-                        {g.members_count}/{g.max_members} membres · {formatFCFA(g.contribution_amount)}/{g.frequency === "Mensuelle" ? "mois" : g.frequency === "Hebdomadaire" ? "sem." : "quinzaine"}
+                        {g.members_count}/{g.max_members} membres · {formatFCFA(g.contribution_amount)}/{
+                          g.frequency === "Journalier" ? "jour"
+                          : g.frequency === "Hebdomadaire" ? "sem."
+                          : g.frequency === "Bimensuelle" ? "quinzaine"
+                          : g.frequency === "Trimestrielle" ? "trim."
+                          : "mois"}
                       </p>
                     </div>
                   </div>
