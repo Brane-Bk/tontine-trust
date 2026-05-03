@@ -24,7 +24,7 @@ export default function Score() {
 
   return (
     <div className="animate-fade-in">
-      <TopBar title="Score de confiance" backTo="/home" backLabel="Accueil" />
+      <TopBar title="Score de confiance" backTo="/profil" backLabel="Profil" />
       <div className="px-4 pb-6">
         {/* Score circle */}
         <div className="flex flex-col items-center mb-6">

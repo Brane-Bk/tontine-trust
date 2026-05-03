@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { initPayment } from "@/lib/talypay";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { toast } from "sonner";
-import { ArrowDownLeft, ArrowUpRight, Wallet, History, Check, Cpu, ShieldCheck } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Wallet, History, Check, Cpu, ShieldCheck, Lock } from "lucide-react";
 
 export default function Portefeuille() {
   const navigate = useNavigate();
@@ -115,20 +115,35 @@ export default function Portefeuille() {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <TopBar title="Mon Portefeuille" backTo="/home" />
+      <TopBar title="Portefeuille" backTo="/home" backLabel="Accueil" />
       
       <div className="px-4 pt-4">
-        {/* Card Solde */}
-        <div className="bg-gradient-to-br from-[hsl(var(--tc-green))] to-[hsl(160,84%,25%)] rounded-2xl p-5 text-white shadow-xl mb-6 relative overflow-hidden">
-          <div className="absolute -right-10 -top-10 w-32 h-32 bg-white opacity-5 rounded-full blur-2xl"></div>
-          <div className="flex items-center gap-2 mb-4">
-            <Wallet className="w-5 h-5 opacity-80" />
-            <p className="text-sm font-medium opacity-90">Solde Disponible</p>
+        <div className="bg-gradient-to-br from-[hsl(var(--tc-green))] to-[hsl(160,40%,26%)] rounded-2xl p-4 text-white shadow-xl mb-6 relative overflow-hidden border border-white/10">
+          <div className="absolute -right-10 -top-10 w-32 h-32 bg-white opacity-5 rounded-full blur-2xl pointer-events-none" />
+          <p className="text-[10px] font-medium text-white/75 text-center uppercase tracking-wider mb-3">Vue d’ensemble</p>
+          <div className="grid grid-cols-2 gap-0 divide-x divide-white/20">
+            <div className="pr-3 text-center">
+              <div className="flex items-center justify-center gap-1 text-white/70 mb-1.5">
+                <Lock className="w-3.5 h-3.5" />
+                <span className="text-[10px] font-medium">Verrouillé</span>
+              </div>
+              <p className="text-2xl font-bold tabular-nums leading-tight">
+                {new Intl.NumberFormat("fr-FR").format(Number(profile?.total_locked ?? 0))}
+              </p>
+              <p className="text-[10px] text-white/60 mt-0.5">FCFA</p>
+            </div>
+            <div className="pl-3 text-center">
+              <div className="flex items-center justify-center gap-1 text-white/70 mb-1.5">
+                <Wallet className="w-3.5 h-3.5" />
+                <span className="text-[10px] font-medium">Disponible</span>
+              </div>
+              <p className="text-2xl font-bold tabular-nums leading-tight">
+                {new Intl.NumberFormat("fr-FR").format(Number(profile?.wallet_balance ?? 0))}
+              </p>
+              <p className="text-[10px] text-white/60 mt-0.5">FCFA</p>
+            </div>
           </div>
-          <p className="text-4xl font-bold mb-1">
-            {new Intl.NumberFormat("fr-FR").format(profile?.wallet_balance || 0)} <span className="text-xl font-medium opacity-80">FCFA</span>
-          </p>
-          <p className="text-xs opacity-80 mt-4">Mis à jour à l'instant</p>
+          <p className="text-[10px] text-white/55 text-center mt-3">Soldes mis à jour à l’ouverture de cette page</p>
         </div>
 
         {/* Actions Tabs */}

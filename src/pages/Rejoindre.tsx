@@ -181,7 +181,7 @@ export default function Rejoindre() {
   if (step === "guarantee") {
     return (
       <div className="animate-slide-up bg-background min-h-screen">
-        <TopBar title="Dépôt de Garantie" backTo={() => setStep("info")} />
+        <TopBar title="Dépôt de Garantie" onBack={() => setStep("info")} backLabel="Retour" />
         <div className="px-4 pb-6">
           <p className="text-sm font-medium mb-4">Ce groupe exige une garantie d'une valeur de <strong className="text-[hsl(var(--tc-green))]">{new Intl.NumberFormat("fr-FR").format(group.guarantee_deposit)} FCFA</strong>.</p>
           

@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Bell, ShieldCheck } from "lucide-react";
+import { Bell, Lock, ShieldCheck, Wallet } from "lucide-react";
 import TCAvatar from "@/components/ui/tc-avatar";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { useAuth } from "@/hooks/useAuth";
@@ -59,41 +59,81 @@ export default function Home() {
 
   return (
     <div className="animate-fade-in">
-      {/* Hero */}
-      <div className="tc-gradient-hero text-white px-4 pt-12 pb-7 relative">
-        <div className="absolute top-3 right-3">
-          <button onClick={() => navigate("/notifications")} className="relative w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
+      {/* Hero : verrouillé et portefeuille au même niveau */}
+      <div className="tc-gradient-hero text-white px-4 pt-12 pb-6 relative">
+        <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
+          <button
+            type="button"
+            onClick={() => navigate("/profil")}
+            className="pointer-events-auto w-9 h-9 rounded-full bg-white/15 border border-white/20 flex items-center justify-center text-[10px] font-bold backdrop-blur-sm hover:bg-white/25 transition-colors"
+            aria-label="Mon profil"
+          >
+            {profile?.initials?.slice(0, 2) || "?"}
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/notifications")}
+            className="pointer-events-auto relative w-9 h-9 rounded-full bg-white/15 border border-white/20 flex items-center justify-center backdrop-blur-sm hover:bg-white/25 transition-colors"
+            aria-label="Notifications"
+          >
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-[hsl(var(--tc-red))] text-[8px] font-bold flex items-center justify-center">
-                {unreadCount}
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 rounded-full bg-[hsl(var(--tc-red))] text-[8px] font-bold flex items-center justify-center">
+                {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}
           </button>
         </div>
-        <p className="text-xs text-white/60 mb-1">Solde total verrouillé</p>
-        <p className="text-2xl font-bold mb-0.5">{formatFCFA(profile?.total_locked ?? 0)}</p>
-        <p className="text-[11px] text-white/60">{profile?.groups_count ?? 0} groupes actifs</p>
-        <div className="flex gap-2 mt-4">
-          <button onClick={() => navigate("/cotiser")} className="flex-1 py-2 rounded-xl bg-white/20 text-xs font-semibold text-center backdrop-blur-sm">Cotiser</button>
-          <button onClick={() => navigate("/rechercher")} className="flex-1 py-2 rounded-xl bg-white/10 text-xs font-medium text-center backdrop-blur-sm">Rejoindre</button>
-          <button onClick={() => navigate("/creer")} className="flex-1 py-2 rounded-xl bg-white/10 text-xs font-medium text-center backdrop-blur-sm">Créer</button>
-        </div>
-      </div>
 
-      {/* Wallet */}
-      <div className="px-4 pt-4 pb-2">
-        <div 
+        <p className="text-center text-[11px] text-white/70 mb-3 pt-1">Mes soldes</p>
+
+        <div className="grid grid-cols-2 gap-2 mb-1">
+          <button
+            type="button"
+            onClick={() => navigate("/portefeuille")}
+            className="rounded-2xl bg-white/12 border border-white/20 px-3 py-3.5 text-left backdrop-blur-sm hover:bg-white/18 active:scale-[0.99] transition-all"
+          >
+            <div className="flex items-center gap-1.5 mb-2 text-white/75">
+              <Lock className="w-3.5 h-3.5" />
+              <span className="text-[10px] font-medium uppercase tracking-wide">Verrouillé</span>
+            </div>
+            <p className="text-lg font-bold leading-tight tabular-nums">{formatFCFA(profile?.total_locked ?? 0).replace(" FCFA", "")}</p>
+            <p className="text-[9px] text-white/55 mt-0.5">FCFA · cotisations et garanties</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/portefeuille")}
+            className="rounded-2xl bg-white/12 border border-white/20 px-3 py-3.5 text-left backdrop-blur-sm hover:bg-white/18 active:scale-[0.99] transition-all"
+          >
+            <div className="flex items-center gap-1.5 mb-2 text-white/75">
+              <Wallet className="w-3.5 h-3.5" />
+              <span className="text-[10px] font-medium uppercase tracking-wide">Disponible</span>
+            </div>
+            <p className="text-lg font-bold leading-tight tabular-nums">{formatFCFA(profile?.wallet_balance ?? 0).replace(" FCFA", "")}</p>
+            <p className="text-[9px] text-white/55 mt-0.5">FCFA · portefeuille</p>
+          </button>
+        </div>
+
+        <button
+          type="button"
           onClick={() => navigate("/portefeuille")}
-          className="bg-card border border-border rounded-xl p-3 flex items-center justify-between cursor-pointer hover:border-[hsl(var(--tc-green))] transition-colors"
+          className="w-full mt-2 py-2 rounded-xl text-[11px] font-medium text-white/90 bg-white/10 border border-white/15 hover:bg-white/15 transition-colors"
         >
-          <div>
-            <p className="text-[10px] text-muted-foreground">Portefeuille disponible</p>
-            <p className="text-base font-bold text-[hsl(var(--tc-green))]">{formatFCFA(profile?.wallet_balance ?? 0)}</p>
-          </div>
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[hsla(160,84%,39%,0.1)] text-[hsl(var(--tc-green))] flex items-center gap-1">
-            💳 Gérer →
-          </span>
+          Gérer dépôts, retraits et historique →
+        </button>
+
+        <p className="text-center text-[10px] text-white/55 mt-3">{profile?.groups_count ?? 0} groupe{(profile?.groups_count ?? 0) !== 1 ? "s" : ""} actif{(profile?.groups_count ?? 0) !== 1 ? "s" : ""}</p>
+
+        <div className="flex gap-2 mt-3">
+          <button type="button" onClick={() => navigate("/cotiser")} className="flex-1 py-2.5 rounded-xl bg-white/20 text-xs font-semibold text-center backdrop-blur-sm border border-white/10">
+            Cotiser
+          </button>
+          <button type="button" onClick={() => navigate("/rechercher")} className="flex-1 py-2.5 rounded-xl bg-white/10 text-xs font-medium text-center backdrop-blur-sm border border-white/10">
+            Rejoindre
+          </button>
+          <button type="button" onClick={() => navigate("/creer")} className="flex-1 py-2.5 rounded-xl bg-white/10 text-xs font-medium text-center backdrop-blur-sm border border-white/10">
+            Créer
+          </button>
         </div>
       </div>
 

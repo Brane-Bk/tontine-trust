@@ -48,7 +48,7 @@ export default function Historique() {
 
   return (
     <div className="animate-fade-in">
-      <TopBar title="Historique" backTo="/home" backLabel="Accueil" />
+      <TopBar title="Historique" backTo="/profil" backLabel="Profil" />
 
       <div className="flex gap-1.5 px-4 mb-4 overflow-x-auto">
         {filters.map((f) => (

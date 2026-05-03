@@ -17,8 +17,8 @@ export default function Admin() {
     <div className="animate-fade-in">
       <TopBar
         title="Admin"
-        backTo="/groupe/1"
-        backLabel="Groupe"
+        backTo="/profil"
+        backLabel="Profil"
         rightElement={
           <span className="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-[hsla(258,90%,66%,0.12)] text-[hsl(var(--tc-purple))]">
             Fondatrice
