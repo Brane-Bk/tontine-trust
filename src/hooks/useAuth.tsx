@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect, createContext, useContext, useCallback } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
@@ -26,8 +26,12 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null, profile: null, session: null, loading: true,
-  signOut: async () => {}, refreshProfile: async () => {},
+  user: null,
+  profile: null,
+  session: null,
+  loading: true,
+  signOut: async () => {},
+  refreshProfile: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -36,91 +40,125 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (userId: string, email?: string, name?: string, phone?: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .maybeSingle();
-
-      if (error) {
-        console.error("fetchProfile:", error.message);
-      }
-
-      if (data) {
-        setProfile(data as Profile);
-        return;
-      }
-
-      if (userId) {
-        console.log("Profile missing for user", userId, ". Attempting repair...");
-        // Si le profil manque, on tente de le créer (réparation automatique)
-        const v_name = name || email?.split('@')[0] || "Utilisateur";
-        const v_initials = v_name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-        
-        const { data: newProfile, error: insertError } = await supabase
+  const fetchProfile = useCallback(
+    async (userId: string, email?: string, name?: string, phone?: string) => {
+      try {
+        const { data, error } = await supabase
           .from("profiles")
-          .insert({
-            id: userId,
-            email: email || "",
-            name: v_name,
-            initials: v_initials,
-            phone: phone || null,
-            wallet_balance: 0,
-            score: 500
-          })
-          .select()
-          .single();
-          
-        if (newProfile) {
-          console.log("Profile repaired successfully!");
-          setProfile(newProfile as Profile);
-        } else if (insertError) {
-          console.error("Critical error during profile repair:", insertError);
+          .select("*")
+          .eq("id", userId)
+          .maybeSingle();
+
+        if (error) {
+          console.error("fetchProfile:", error.message);
         }
+
+        if (data) {
+          setProfile(data as Profile);
+          return;
+        }
+
+        if (userId) {
+          const v_name = name || email?.split("@")[0] || "Utilisateur";
+          const v_initials = v_name
+            .split(" ")
+            .map((n) => n[0])
+            .join("")
+            .toUpperCase()
+            .substring(0, 2);
+
+          const { data: newProfile, error: insertError } = await supabase
+            .from("profiles")
+            .insert({
+              id: userId,
+              email: email || "",
+              name: v_name,
+              initials: v_initials,
+              phone: phone || null,
+              wallet_balance: 0,
+              score: 500,
+            })
+            .select()
+            .single();
+
+          if (newProfile) {
+            setProfile(newProfile as Profile);
+          } else if (insertError) {
+            console.error("Critical error during profile repair:", insertError);
+          }
+        }
+      } catch (err) {
+        console.error("Unexpected error in fetchProfile:", err);
       }
-    } catch (err) {
-      console.error("Unexpected error in fetchProfile:", err);
-    }
-  };
+    },
+    []
+  );
 
   const refreshProfile = async () => {
     if (user) await fetchProfile(user.id);
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
+    let cancelled = false;
+
+    const safeSetLoading = (v: boolean) => {
+      if (!cancelled) setLoading(v);
+    };
+
+    const applySession = async (next: Session | null) => {
+      setSession(next);
+      setUser(next?.user ?? null);
+      if (next?.user) {
         await fetchProfile(
-          session.user.id, 
-          session.user.email, 
-          session.user.user_metadata?.name,
-          session.user.user_metadata?.phone
+          next.user.id,
+          next.user.email ?? undefined,
+          next.user.user_metadata?.name,
+          next.user.user_metadata?.phone
         );
+      } else {
+        setProfile(null);
       }
-      setLoading(false);
+    };
+
+    const bootstrap = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (cancelled) return;
+        if (error) throw error;
+        await applySession(data.session);
+      } catch (e) {
+        console.error("[AuthProvider] getSession:", e);
+        if (!cancelled) {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+        }
+      } finally {
+        safeSetLoading(false);
+      }
+    };
+
+    void bootstrap();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      void (async () => {
+        await Promise.resolve();
+        if (cancelled) return;
+        try {
+          await applySession(nextSession);
+        } catch (e) {
+          console.error("[AuthProvider] onAuthStateChange:", e);
+        }
+      })();
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchProfile(
-          session.user.id, 
-          session.user.email, 
-          session.user.user_metadata?.name,
-          session.user.user_metadata?.phone
-        );
-      }
-      else setProfile(null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, [fetchProfile]);
 
   const signOut = async () => {
     await supabase.auth.signOut();

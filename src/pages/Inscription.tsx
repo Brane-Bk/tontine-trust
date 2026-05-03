@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TopBar from "@/components/layout/TopBar";
-import { supabase } from "@/lib/supabase";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { toast } from "sonner";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { saveDemoAccount } from "@/lib/demoMultiAccount";
@@ -17,6 +17,10 @@ export default function Inscription() {
   const [memoDemo, setMemoDemo] = useState(true);
 
   const handleSignUp = async () => {
+    if (!isSupabaseConfigured) {
+      toast.error("Configuration Supabase manquante. Ajoutez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans .env.");
+      return;
+    }
     if (!email || !name || !phone || password.length < 6) {
       toast.error("Veuillez remplir tous les champs et entrer un mot de passe d'au moins 6 caractères");
       return;
@@ -68,6 +72,17 @@ export default function Inscription() {
         rightElement={<span className="text-xs text-[hsl(var(--tc-green))] font-semibold">Profil</span>}
       />
       <div className="px-4 pt-2">
+        {!isSupabaseConfigured && (
+          <div
+            role="alert"
+            className="mb-4 rounded-xl border border-[hsla(0,84%,60%,0.35)] bg-[hsla(0,84%,60%,0.08)] px-3 py-2.5 text-[11px] text-foreground leading-relaxed"
+          >
+            <strong className="font-semibold">Configuration requise.</strong> Fichier{" "}
+            <code className="rounded bg-muted px-1 py-0.5 text-[10px]">.env</code> avec{" "}
+            <code className="rounded bg-muted px-1 py-0.5 text-[10px]">VITE_SUPABASE_URL</code> et{" "}
+            <code className="rounded bg-muted px-1 py-0.5 text-[10px]">VITE_SUPABASE_ANON_KEY</code>, puis redémarrage du serveur de dev.
+          </div>
+        )}
         {!isSuccess ? (
           <div className="animate-slide-up">
             <label className="block text-xs font-medium text-muted-foreground mb-1.5">Nom complet</label>

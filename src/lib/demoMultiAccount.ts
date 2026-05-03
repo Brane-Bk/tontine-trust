@@ -18,35 +18,52 @@ export function getDemoAccounts(): DemoAccountRecord[] {
     if (!raw) return [];
     const arr = JSON.parse(raw) as unknown;
     if (!Array.isArray(arr)) return [];
-    return arr.filter(
+    const filtered = arr.filter(
       (x): x is DemoAccountRecord =>
         typeof x === "object" &&
         x !== null &&
         typeof (x as DemoAccountRecord).email === "string" &&
         typeof (x as DemoAccountRecord).password === "string"
     );
+    return filtered.map((x) => ({
+      email: x.email,
+      password: String(x.password),
+      label:
+        typeof x.label === "string" && x.label.trim()
+          ? x.label.trim().slice(0, 40)
+          : x.email.split("@")[0] || "Compte",
+      savedAt: typeof x.savedAt === "string" ? x.savedAt : new Date().toISOString(),
+    }));
   } catch {
     return [];
   }
 }
 
 function persist(list: DemoAccountRecord[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list.slice(0, MAX_ACCOUNTS)));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list.slice(0, MAX_ACCOUNTS)));
+  } catch (e) {
+    console.warn("[demoMultiAccount] localStorage:", e);
+  }
 }
 
 /** Ajoute ou remplace le compte (identifié par l’email, insensible à la casse). */
 export function saveDemoAccount(email: string, password: string, label?: string) {
-  const trimmed = email.trim();
-  const norm = trimmed.toLowerCase();
-  const rest = getDemoAccounts().filter((a) => a.email.toLowerCase() !== norm);
-  const displayLabel = (label?.trim() || trimmed.split("@")[0] || "Compte").slice(0, 40);
-  const next: DemoAccountRecord = {
-    email: trimmed,
-    password,
-    label: displayLabel,
-    savedAt: new Date().toISOString(),
-  };
-  persist([next, ...rest]);
+  try {
+    const trimmed = email.trim();
+    const norm = trimmed.toLowerCase();
+    const rest = getDemoAccounts().filter((a) => a.email.toLowerCase() !== norm);
+    const displayLabel = (label?.trim() || trimmed.split("@")[0] || "Compte").slice(0, 40);
+    const next: DemoAccountRecord = {
+      email: trimmed,
+      password,
+      label: displayLabel,
+      savedAt: new Date().toISOString(),
+    };
+    persist([next, ...rest]);
+  } catch (e) {
+    console.warn("[demoMultiAccount] saveDemoAccount:", e);
+  }
 }
 
 export function removeDemoAccount(email: string) {

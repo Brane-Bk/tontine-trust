@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import TopBar from "@/components/layout/TopBar";
-import { supabase } from "@/lib/supabase";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Users, X } from "lucide-react";
 import { getDemoAccounts, removeDemoAccount, saveDemoAccount, type DemoAccountRecord } from "@/lib/demoMultiAccount";
@@ -43,6 +43,10 @@ export default function Connexion() {
   };
 
   const handleLogin = async () => {
+    if (!isSupabaseConfigured) {
+      toast.error("Configuration Supabase manquante. Vérifiez le fichier .env (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY).");
+      return;
+    }
     if (password.length < 6 || !email) {
       toast.error("Veuillez entrer une adresse email valide et un mot de passe (min. 6 caractères)");
       return;
@@ -66,6 +70,10 @@ export default function Connexion() {
   };
 
   const handleQuickLogin = async (acc: DemoAccountRecord) => {
+    if (!isSupabaseConfigured) {
+      toast.error("Configuration Supabase manquante. Ajoutez les clés dans .env à la racine du projet.");
+      return;
+    }
     setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -96,6 +104,18 @@ export default function Connexion() {
     <div className="flex flex-col min-h-screen animate-slide-up">
       <TopBar title="Connexion" backTo="/" backLabel="Retour" />
       <div className="flex-1 px-4 pt-4 pb-8">
+        {!isSupabaseConfigured && (
+          <div
+            role="alert"
+            className="mb-4 rounded-xl border border-[hsla(0,84%,60%,0.35)] bg-[hsla(0,84%,60%,0.08)] px-3 py-2.5 text-[11px] text-foreground leading-relaxed"
+          >
+            <strong className="font-semibold">Configuration requise.</strong> Créez un fichier{" "}
+            <code className="rounded bg-muted px-1 py-0.5 text-[10px]">.env</code> à la racine avec{" "}
+            <code className="rounded bg-muted px-1 py-0.5 text-[10px]">VITE_SUPABASE_URL</code> et{" "}
+            <code className="rounded bg-muted px-1 py-0.5 text-[10px]">VITE_SUPABASE_ANON_KEY</code>, puis
+            redémarrez <code className="rounded bg-muted px-1 py-0.5 text-[10px]">npm run dev</code>.
+          </div>
+        )}
         <div className="text-center mb-6">
           <div className="w-14 h-14 rounded-2xl tc-gradient-green flex items-center justify-center mx-auto mb-4 tc-shadow-green">
             <span className="text-white text-xl">🔐</span>
