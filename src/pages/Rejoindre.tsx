@@ -26,6 +26,7 @@ interface Group {
   min_score: number;
   status: "pending" | "active" | "completed" | "cancelled";
   total_rounds: number;
+  order_type?: string;
 }
 
 const FREQ_LABEL: Record<string, string> = {
@@ -83,8 +84,10 @@ export default function Rejoindre() {
   const scoreOk = !profile || profile.score >= group.min_score;
   // Re-fetch live count before checking (prevents race condition)
   const hasGuarantee = group.guarantee_deposit > 0;
-  const expectedPayout = group.contribution_amount * group.total_rounds;
+  const expectedPayout = group.contribution_amount * group.max_members;
   const isFull = group.members_count >= group.max_members;
+  const isCompleted = group.status === "completed" || group.status === "cancelled";
+  const orderLabel = group.order_type === "manual" ? "Ordre manuel" : "Ordre tiré au sort";
 
   const handleJoin = async () => {
     if (!user || !profile) return;
@@ -101,8 +104,8 @@ export default function Rejoindre() {
       navigate("/rechercher");
       return;
     }
-    if (freshGroup && freshGroup.status === "active") {
-      toast.error("Ce groupe est déjà actif — les inscriptions sont closes.");
+    if (freshGroup && freshGroup.status !== "pending") {
+      toast.error("Ce groupe n'est plus ouvert aux inscriptions.");
       navigate("/rechercher");
       return;
     }
@@ -306,8 +309,8 @@ export default function Rejoindre() {
                 }
                 className="w-full bg-card border border-border rounded-xl p-3 text-sm min-h-[100px] outline-none focus:border-[hsl(var(--tc-green))] transition-colors resize-none"
               />
-              <p className="text-[10px] text-[hsl(var(--tc-amber))] mt-1.5">
-                ⚠️ Votre adhésion sera en attente de validation par l'administrateur du groupe.
+              <p className="text-[10px] text-[hsl(var(--tc-amber))] mt-1.5 leading-relaxed">
+                ⚠️ Votre adhésion sera en attente de validation par l'administrateur du groupe. En cas de garantie foncière, le titre doit être vérifié avant activation. Tout membre qui reçoit la cagnotte puis quitte sans avoir terminé son cycle sera privé de la garantie et pourra faire l'objet de poursuites.
               </p>
             </div>
           )}
@@ -445,6 +448,7 @@ export default function Rejoindre() {
             <p>• Chaque membre cotise <strong className="text-foreground">{formatFCFA(group.contribution_amount)}</strong> à chaque tour ({group.frequency})</p>
             <p>• Quand tous ont payé, le bénéficiaire du tour reçoit <strong className="text-foreground">{formatFCFA(expectedPayout)}</strong></p>
             <p>• Le cycle dure <strong className="text-foreground">{group.total_rounds} tours</strong> — chaque membre reçoit une fois</p>
+            <p>• Ordre de distribution : <strong className="text-foreground">{orderLabel}</strong></p>
             {group.penalty_rate > 0 && (
               <p>• Pénalité de retard : <strong className="text-[hsl(var(--tc-amber))]">{group.penalty_rate}%</strong></p>
             )}
@@ -459,7 +463,10 @@ export default function Rejoindre() {
             </p>
             <p className="text-[10px] text-muted-foreground leading-relaxed">
               Une caution de <strong className="text-foreground">{formatFCFA(group.guarantee_deposit)}</strong> sera exigée à l'étape suivante. 
-              Elle est remboursée en fin de cycle si vous avez respecté vos engagements.
+              Elle est bloquée jusqu'à la fin du cycle et remboursée si vous avez cotisé à temps.
+            </p>
+            <p className="text-[10px] text-[hsl(var(--tc-amber))] mt-2">
+              Les titres de propriété ou garanties bancaires sont acceptés. Si un membre reçoit la cagnotte puis tente de quitter sans terminer son cycle, il perdra cette garantie et des poursuites pourront être engagées.
             </p>
           </div>
         )}
@@ -489,10 +496,10 @@ export default function Rejoindre() {
         <button
           type="button"
           onClick={handleJoin}
-          disabled={!scoreOk || isFull || alreadyMember}
+          disabled={!scoreOk || isFull || alreadyMember || isCompleted}
           className="w-full py-3.5 rounded-xl text-sm font-bold text-white tc-gradient-green tc-shadow-green disabled:opacity-40 flex items-center justify-center gap-2"
         >
-          {alreadyMember ? "Déjà membre ✓" : isFull ? "Groupe complet" : hasGuarantee
+          {alreadyMember ? "Déjà membre ✓" : isCompleted ? "Inscriptions closes" : isFull ? "Groupe complet" : hasGuarantee
             ? <><Lock className="w-4 h-4" /> {`Rejoindre · Caution ${formatFCFA(group.guarantee_deposit)}`}</>
             : <><ChevronRight className="w-4 h-4" /> Rejoindre ce groupe</>}
         </button>

@@ -37,10 +37,12 @@ export default function Cotiser() {
     if (!user) return;
     supabase
       .from("group_members")
-      .select("group_id, groups(id, name, contribution_amount)")
+      .select("group_id, groups(id, name, contribution_amount, status)")
       .eq("profile_id", user.id)
       .then(({ data }) => {
-        const grps = (data || []).map((d: any) => d.groups).filter(Boolean);
+        const grps = (data || [])
+          .map((d: any) => d.groups)
+          .filter((g: any) => g && g.status === "active");
         setGroups(grps);
         if (grps.length > 0) setSelectedGroup(grps[0]);
       });

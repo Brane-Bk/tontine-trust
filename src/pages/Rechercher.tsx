@@ -63,7 +63,7 @@ export default function Rechercher() {
 
   const getGroupStatus = (g: Group) => {
     if (myGroupIds.includes(g.id)) return "member";
-    if (g.status === "full" || g.members_count >= g.max_members) return "full";
+    if (g.status !== "pending" || g.members_count >= g.max_members) return "full";
     if (profile && profile.score < g.min_score) return "score_too_low";
     return "open";
   };

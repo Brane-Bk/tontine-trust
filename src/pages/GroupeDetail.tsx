@@ -25,6 +25,7 @@ interface Group {
   max_members: number;
   members_count: number;
   penalty_rate: number;
+  order_type?: string;
   created_by: string | null;
 }
 
@@ -107,6 +108,8 @@ export default function GroupeDetail() {
     group.current_round > 0 ? sorted.find((m) => m.turn_order === group.current_round)?.profile_id : null;
   const paidCount = sorted.filter((m) => m.status === "paid").length;
   const totalDue = sorted.filter((m) => m.status !== "excluded").length;
+  const isCompleted = group.status === "completed" || group.current_round > group.total_rounds;
+  const orderMode = group.order_type === "manual" ? "Manuel" : "Aléatoire";
 
   return (
     <div className="animate-fade-in pb-6">
@@ -150,12 +153,13 @@ export default function GroupeDetail() {
         </p>
         {group.total_rounds > 0 && (
           <p className="text-[10px] text-muted-foreground mt-0.5">
-            🏆 Cagnotte à chaque tour :{" "}
-            <strong className="text-[hsl(var(--tc-green))]">
-              {formatFCFA(group.contribution_amount * group.members_count)}
-            </strong>{" "}({group.members_count} membres × cotisation)
+            🏆 Cagnotte à chaque tour : <strong className="text-[hsl(var(--tc-green))]">{formatFCFA(group.contribution_amount * group.members_count)}</strong> ({group.members_count} membres × cotisation)
           </p>
         )}
+        <div className="mt-3 rounded-2xl border border-border/80 bg-[hsla(160,84%,39%,0.06)] p-3 text-[10px] text-muted-foreground">
+          <p className="font-semibold text-[hsl(var(--tc-foreground))] mb-1">Statut du cycle</p>
+          <p>{isCompleted ? "Cycle terminé — toutes les distributions ont été versées." : `Ordre de distribution : ${orderMode}.`}</p>
+        </div>
       </div>
 
       {/* Registre blockchain — tons doux */}
@@ -199,12 +203,7 @@ export default function GroupeDetail() {
           <div>
             <h3 className="text-xs font-semibold text-foreground/90">Liste de ramassage</h3>
             <p className="text-[10px] text-muted-foreground mt-0.5">
-              Tour {Math.max(group.current_round, 1)} · bénéficiaire :{" "}
-              <span className="font-medium text-foreground/80">
-                {beneficiaryId
-                  ? sorted.find((m) => m.profile_id === beneficiaryId)?.profiles?.name || "—"
-                  : "—"}
-              </span>
+              Tour {Math.max(group.current_round, 1)} / {group.total_rounds}
             </p>
           </div>
           <div className="text-right">
@@ -212,6 +211,36 @@ export default function GroupeDetail() {
             <p className="text-[10px] font-medium text-foreground/85">{deadlineLabel(group.cotisation_deadline_at)}</p>
           </div>
         </div>
+
+        {/* BANNÈRE DE VERSEMENT DE LA CAGNOTTE */}
+        {group.status === "active" && group.current_round > 0 && beneficiaryId && (
+          <div className="mb-4 rounded-xl bg-gradient-to-r from-[hsl(var(--tc-green))] to-[hsl(160,84%,25%)] p-[1px] shadow-sm animate-pulse-slow">
+            <div className="bg-card dark:bg-[hsl(160,20%,12%)] rounded-[11px] p-3 flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-[hsla(160,84%,39%,0.15)] flex items-center justify-center shrink-0">
+                  <Banknote className="w-4 h-4 text-[hsl(var(--tc-green))]" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[hsl(var(--tc-green))] mb-0.5">
+                    Versement de la cagnotte
+                  </p>
+                  <p className="text-xs font-medium text-foreground/90">
+                    C'est le tour de <strong className="text-foreground text-sm">{sorted.find((m) => m.profile_id === beneficiaryId)?.profiles?.name || "—"}</strong>
+                  </p>
+                </div>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-2.5 flex items-center justify-between border border-border/50">
+                <p className="text-[10px] text-muted-foreground">Montant à recevoir :</p>
+                <p className="text-sm font-bold text-foreground">
+                  {formatFCFA(group.contribution_amount * group.members_count)}
+                </p>
+              </div>
+              <p className="text-[9px] text-muted-foreground text-center">
+                La somme sera versée automatiquement dès que tous les membres auront cotisé.
+              </p>
+            </div>
+          </div>
+        )}
 
         <p className="text-[10px] text-muted-foreground mb-3 leading-relaxed rounded-lg bg-muted/40 px-2.5 py-2 border border-border/60">
           <Shield className="w-3 h-3 inline-block mr-1 align-text-bottom text-[hsl(var(--tc-green))] opacity-80" />
@@ -308,6 +337,9 @@ export default function GroupeDetail() {
           <div className="p-3 rounded-xl bg-[hsla(45,28%,95%,0.85)] border border-[hsla(38,22%,82%,0.7)] dark:bg-[hsla(35,15%,18%,0.4)]">
             <p className="text-[11px] font-medium text-foreground/85 mb-0.5">Dépôt de garantie</p>
             <p className="text-xs text-muted-foreground">{formatFCFA(group.guarantee_deposit)} verrouillés · fin de cycle</p>
+            <p className="text-[10px] text-[hsl(var(--tc-amber))] mt-1">
+              Les cautions bancaires ou titres de propriété renforcent la confiance. En cas de non-respect des engagements, le groupe peut conserver la garantie et déclencher des poursuites.
+            </p>
           </div>
         </div>
       )}

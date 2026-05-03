@@ -38,8 +38,8 @@ export default function CreerGroupe() {
     name: "",
     amount: "",
     frequency: "Mensuelle" as Frequency,
-    otherMembers: "5",   // ← nombre d'AUTRES membres (hors créateur)
-    order: "vrf",
+    otherMembers: "4",   // nombre d'autres membres (hors créateur)
+    order: "random",
     penalty: "5",
     guarantee: "",
     minScore: "0",
@@ -55,7 +55,8 @@ export default function CreerGroupe() {
     setShowIntro(false);
   };
 
-  const totalMembers = (parseInt(form.otherMembers) || 1) + 1; // +1 pour le créateur
+  const totalMembers = (parseInt(form.otherMembers, 10) || 0) + 1; // +1 pour le créateur
+  const clampedMembers = Math.min(Math.max(totalMembers, 2), 50);
 
   const handleCreate = async () => {
     if (!user) return;
@@ -63,9 +64,13 @@ export default function CreerGroupe() {
       toast.error("Veuillez remplir le nom et le montant");
       return;
     }
-    const others = parseInt(form.otherMembers);
+    const others = parseInt(form.otherMembers, 10);
     if (!others || others < 1) {
-      toast.error("Il faut au moins 1 autre participant");
+      toast.error("Il faut au moins 2 membres au total (vous + 1 autre)");
+      return;
+    }
+    if (others > 49) {
+      toast.error("Le groupe ne peut pas dépasser 50 membres au total.");
       return;
     }
     setLoading(true);
@@ -92,8 +97,8 @@ export default function CreerGroupe() {
           total_rounds: maxMembers,
           penalty_rate: parseFloat(form.penalty) || 5,
           guarantee_deposit: parseFloat(form.guarantee) || 0,
-          order_type: form.order,
-          min_score: parseInt(form.minScore) || 0,
+          order_type: form.order === "random" ? "random" : "manual",
+          min_score: parseInt(form.minScore, 10) || 0,
           status: "pending",
           created_by: user.id,
         })
@@ -111,7 +116,11 @@ export default function CreerGroupe() {
         status: "waiting",
         guarantee_status: "verified",
       });
-      if (memberErr) throw memberErr;
+      if (memberErr) {
+        // Rollback: delete the orphaned group
+        await supabase.from("groups").delete().eq("id", data.id);
+        throw memberErr;
+      }
 
       await refreshProfile();
       toast.success("🎉 Groupe créé ! Vous êtes membre n°1.");
@@ -291,14 +300,21 @@ export default function CreerGroupe() {
                 Nombre de participants (hors vous)
               </label>
               <p className="text-[10px] text-muted-foreground mb-2 leading-relaxed bg-[hsla(160,84%,39%,0.06)] border border-[hsla(160,84%,39%,0.15)] rounded-lg px-2.5 py-2">
-                💡 <strong>Vous êtes automatiquement membre n°1.</strong> Entrez ici le nombre d'autres personnes qui peuvent rejoindre. Total : {totalMembers} membres.
+                💡 <strong>Vous êtes automatiquement membre n°1.</strong> Entrez ici le nombre d'autres personnes qui peuvent rejoindre. Total : {clampedMembers} membres.
               </p>
               <input
                 type="number"
                 value={form.otherMembers}
-                onChange={(e) => setForm({ ...form, otherMembers: e.target.value })}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value, 10);
+                  if (!isNaN(value) && value > 49) {
+                    setForm({ ...form, otherMembers: "49" });
+                  } else {
+                    setForm({ ...form, otherMembers: e.target.value });
+                  }
+                }}
                 min="1"
-                max="99"
+                max="49"
                 className="w-full px-3 py-2.5 rounded-xl border border-border bg-card text-sm outline-none focus:border-[hsl(var(--tc-green))] transition-colors"
               />
               {form.amount && parseInt(form.otherMembers) > 0 && (
@@ -330,8 +346,8 @@ export default function CreerGroupe() {
               <p className="text-[10px] text-muted-foreground mb-2">Qui reçoit la cagnotte en premier ?</p>
               <div className="flex gap-2">
                 {[
-                  { val: "vrf", label: "🎲 Aléatoire", desc: "Tirage au sort sécurisé à l'activation" },
-                  { val: "manual", label: "✋ Manuel", desc: "Vous définissez l'ordre vous-même" },
+                  { val: "random", label: "🎲 Aléatoire", desc: "Tirage au sort sécurisé lorsque le groupe est complet" },
+                  { val: "manual", label: "✋ Manuel", desc: "Vous définissez l'ordre manuellement après création" },
                 ].map((o) => (
                   <button
                     key={o.val}

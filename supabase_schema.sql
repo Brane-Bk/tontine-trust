@@ -550,6 +550,23 @@ BEGIN
           AND g.status = 'pending'
           AND g.members_count >= g.max_members;
 
+        -- Si l'ordre est aléatoire, tirer au sort les tours lorsque le groupe devient actif.
+        IF EXISTS (
+            SELECT 1 FROM public.groups
+            WHERE id = NEW.group_id
+              AND order_type IN ('random', 'vrf')
+              AND status = 'active'
+        ) THEN
+            UPDATE public.group_members gm
+            SET turn_order = s.rn
+            FROM (
+                SELECT id, ROW_NUMBER() OVER (ORDER BY random()) AS rn
+                FROM public.group_members
+                WHERE group_id = NEW.group_id
+            ) AS s
+            WHERE gm.id = s.id;
+        END IF;
+
     ELSIF TG_OP = 'DELETE' THEN
         UPDATE public.groups
         SET members_count = GREATEST(members_count - 1, 0)
