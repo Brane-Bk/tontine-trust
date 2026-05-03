@@ -64,6 +64,10 @@ export default function CreerGroupe() {
       toast.error("Veuillez remplir le nom et le montant");
       return;
     }
+    if (!form.guarantee || parseFloat(form.guarantee) <= 0) {
+      toast.error("Le montant de la garantie bancaire est obligatoire");
+      return;
+    }
     const others = parseInt(form.otherMembers, 10);
     if (!others || others < 1) {
       toast.error("Il faut au moins 2 membres au total (vous + 1 autre)");
@@ -181,8 +185,8 @@ export default function CreerGroupe() {
                 icon: ShieldCheck,
                 color: "text-[hsl(var(--tc-green))]",
                 bg: "bg-[hsla(160,84%,39%,0.1)]",
-                title: "Garantie (optionnelle)",
-                body: "Vous pouvez exiger une caution pour renforcer la confiance : paiement bloqué, garantie bancaire ou titre de propriété. En cas d'exclusion, la garantie couvre les impayés.",
+                title: "Garantie bancaire obligatoire",
+                body: "Une banque partenaire avance le paiement en cas de défaut du membre, puis récupère les fonds auprès de lui. Ce mécanisme renforce la confiance du groupe.",
               },
               {
                 icon: TrendingUp,
@@ -393,17 +397,17 @@ export default function CreerGroupe() {
 
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                Dépôt de garantie (FCFA) — Optionnel
+                Montant de la garantie bancaire (FCFA) — Obligatoire
               </label>
               <p className="text-[10px] text-muted-foreground mb-1.5 leading-relaxed">
-                Montant bloqué en caution par chaque membre. Remboursé en fin de cycle si aucun impayé.
+                Les membres doivent fournir un numéro de compte bancaire partenaire. La banque paie si un membre manque à sa cotisation, puis récupère les fonds auprès de lui.
               </p>
               <input
                 type="number"
                 value={form.guarantee}
                 onChange={(e) => setForm({ ...form, guarantee: e.target.value })}
-                placeholder="Laisser vide = pas de garantie"
-                min="0"
+                placeholder="Montant de garantie obligatoire"
+                min="1"
                 className="w-full px-3 py-2.5 rounded-xl border border-border bg-card text-sm outline-none focus:border-[hsl(var(--tc-green))] transition-colors"
               />
             </div>

@@ -335,10 +335,10 @@ export default function GroupeDetail() {
       {group.guarantee_deposit > 0 && (
         <div className="px-4 pb-3">
           <div className="p-3 rounded-xl bg-[hsla(45,28%,95%,0.85)] border border-[hsla(38,22%,82%,0.7)] dark:bg-[hsla(35,15%,18%,0.4)]">
-            <p className="text-[11px] font-medium text-foreground/85 mb-0.5">Dépôt de garantie</p>
-            <p className="text-xs text-muted-foreground">{formatFCFA(group.guarantee_deposit)} verrouillés · fin de cycle</p>
-            <p className="text-[10px] text-[hsl(var(--tc-amber))] mt-1">
-              Les cautions bancaires ou titres de propriété renforcent la confiance. En cas de non-respect des engagements, le groupe peut conserver la garantie et déclencher des poursuites.
+            <p className="text-[11px] font-medium text-foreground/85 mb-0.5">Dépôt de garantie bancaire</p>
+            <p className="text-xs text-muted-foreground">{formatFCFA(group.guarantee_deposit)} requis · numéro de compte partenaire</p>
+            <p className="text-[10px] text-[hsl(var(--tc-amber))] mt-1 leading-relaxed">
+              Une banque partenaire avance le paiement si un membre fait défaut, puis se charge de récupérer les fonds auprès du membre défaillant. Cette garantie est obligatoire pour rejoindre le groupe.
             </p>
           </div>
         </div>

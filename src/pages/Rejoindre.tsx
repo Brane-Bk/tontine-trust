@@ -49,9 +49,7 @@ export default function Rejoindre() {
   const [phone, setPhone] = useState(profile?.phone || "");
   const [step, setStep] = useState<"info" | "guarantee" | "processing" | "done">("info");
   const [alreadyMember, setAlreadyMember] = useState(false);
-  const [guaranteeType, setGuaranteeType] = useState<"money" | "bank" | "property">("money");
   const [guaranteeProof, setGuaranteeProof] = useState("");
-  const [useWallet, setUseWallet] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -162,43 +160,10 @@ export default function Rejoindre() {
     setStep("processing");
 
     try {
-      if (guaranteeType === "money") {
-        let result;
-        if (useWallet) {
-          if ((profile?.wallet_balance || 0) < group.guarantee_deposit) {
-            toast.error("Solde du portefeuille insuffisant pour la caution");
-            setStep("guarantee");
-            return;
-          }
-          result = await payFromWallet({
-            amount: group.guarantee_deposit,
-            profile_id: user.id,
-            group_id: group.id,
-            transaction_type: "guarantee",
-            transaction_name: `Caution — ${group.name}`,
-          });
-        } else {
-          result = await initPayment({
-            amount: group.guarantee_deposit,
-            customer_phone: phone,
-            profile_id: user.id,
-            group_id: group.id,
-            transaction_type: "guarantee",
-            transaction_name: `Caution — ${group.name}`,
-            operator: "MTN",
-          });
-        }
-        if (!result.success) {
-          toast.error(result.message || "Échec du paiement de la caution");
-          setStep("guarantee");
-          return;
-        }
-      } else {
-        if (!guaranteeProof.trim()) {
-          toast.error("Veuillez fournir les détails de votre garantie");
-          setStep("guarantee");
-          return;
-        }
+      if (!guaranteeProof.trim()) {
+        toast.error("Veuillez fournir le numéro de compte bancaire partenaire.");
+        setStep("guarantee");
+        return;
       }
 
       // Get live count for turn_order
@@ -215,9 +180,9 @@ export default function Rejoindre() {
         role: "member",
         turn_order: nextTurn,
         status: "waiting",
-        guarantee_type: guaranteeType,
+        guarantee_type: "bank",
         guarantee_proof: guaranteeProof,
-        guarantee_status: guaranteeType === "money" ? "verified" : "pending",
+        guarantee_status: "pending",
       });
 
       if (joinError) throw joinError;
@@ -238,82 +203,30 @@ export default function Rejoindre() {
         <div className="px-4">
           <div className="p-3 rounded-xl bg-[hsla(38,92%,50%,0.08)] border border-[hsla(38,92%,50%,0.2)] mb-5">
             <p className="text-[11px] font-semibold text-[hsl(var(--tc-amber))] mb-1">
-              🔒 Pourquoi une garantie ?
+              🔒 Garantie bancaire obligatoire
             </p>
             <p className="text-[10px] text-muted-foreground leading-relaxed">
-              Ce groupe exige une caution de <strong className="text-foreground">{formatFCFA(group.guarantee_deposit)}</strong>. 
-              Elle est bloquée jusqu'à la fin du cycle et remboursée si vous avez payé toutes vos cotisations. 
-              En cas d'exclusion pour impayé, elle couvre les dettes.
+              Ce groupe exige une garantie bancaire via un compte partenaire. Si vous ne payez pas votre cotisation, la banque avance le montant pour le groupe et se charge ensuite de récupérer les fonds auprès de vous.
+            </p>
+            <p className="text-[10px] text-[hsl(var(--tc-amber))] mt-2">
+              Le numéro de compte bancaire partenaire doit être fourni ci-dessous. Il sera vérifié par l'administrateur.
             </p>
           </div>
 
-          <label className="block text-xs font-semibold text-muted-foreground mb-2">
-            Choisissez le type de garantie :
-          </label>
-          <div className="flex flex-col gap-2 mb-5">
-            {[
-              { val: "money" as const, icon: "💳", label: "Versement en argent", desc: `${formatFCFA(group.guarantee_deposit)} bloqués jusqu'à la fin du cycle.` },
-              { val: "bank" as const, icon: "🏦", label: "Garantie Bancaire", desc: "Référence bancaire. Examen par l'administrateur requis." },
-              { val: "property" as const, icon: "🏠", label: "Titre de Propriété", desc: "Terrain, véhicule ou bien équivalent. Examen manuel requis." },
-            ].map((g) => (
-              <button
-                key={g.val}
-                type="button"
-                onClick={() => setGuaranteeType(g.val)}
-                className={`p-3 rounded-xl border-2 text-left transition-all ${
-                  guaranteeType === g.val
-                    ? "border-[hsl(var(--tc-green))] bg-[hsla(160,84%,39%,0.06)]"
-                    : "border-border bg-card"
-                }`}
-              >
-                <p className="text-sm font-bold">{g.icon} {g.label}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{g.desc}</p>
-              </button>
-            ))}
+          <div className="animate-fade-in mb-5">
+            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+              Numéro de compte bancaire partenaire
+            </label>
+            <textarea
+              value={guaranteeProof}
+              onChange={(e) => setGuaranteeProof(e.target.value)}
+              placeholder="Ex : BOA-1234567-ABJ-003"
+              className="w-full bg-card border border-border rounded-xl p-3 text-sm min-h-[100px] outline-none focus:border-[hsl(var(--tc-green))] transition-colors resize-none"
+            />
+            <p className="text-[10px] text-[hsl(var(--tc-amber))] mt-1.5 leading-relaxed">
+              ⚠️ En cas d'impayé, notre banque partenaire paie d'abord à votre place, puis fera le recouvrement auprès de vous. Ce compte bancaire est obligatoire pour rejoindre le groupe.
+            </p>
           </div>
-
-          {guaranteeType === "money" && (
-            <div className="animate-fade-in mb-5">
-              <label className="flex items-center gap-2.5 p-3 border border-border bg-card rounded-xl mb-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={useWallet}
-                  onChange={(e) => setUseWallet(e.target.checked)}
-                  className="w-4 h-4 rounded accent-[hsl(var(--tc-green))]"
-                />
-                <div>
-                  <span className="text-sm font-medium">Payer depuis mon portefeuille</span>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    Solde disponible : {formatFCFA(profile?.wallet_balance || 0)}
-                  </p>
-                </div>
-              </label>
-              {!useWallet && (
-                <PhoneInput label="Numéro Mobile Money" value={phone} onChange={setPhone} placeholder="01 XX XX XX XX" />
-              )}
-            </div>
-          )}
-
-          {(guaranteeType === "bank" || guaranteeType === "property") && (
-            <div className="animate-fade-in mb-5">
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                Détails et références de votre garantie
-              </label>
-              <textarea
-                value={guaranteeProof}
-                onChange={(e) => setGuaranteeProof(e.target.value)}
-                placeholder={
-                  guaranteeType === "bank"
-                    ? "Ex : Garantie BOA n° 1234567, agence Cotonou Centre..."
-                    : "Ex : Titre foncier n° 9876, Parcelle C, Abomey-Calavi..."
-                }
-                className="w-full bg-card border border-border rounded-xl p-3 text-sm min-h-[100px] outline-none focus:border-[hsl(var(--tc-green))] transition-colors resize-none"
-              />
-              <p className="text-[10px] text-[hsl(var(--tc-amber))] mt-1.5 leading-relaxed">
-                ⚠️ Votre adhésion sera en attente de validation par l'administrateur du groupe. En cas de garantie foncière, le titre doit être vérifié avant activation. Tout membre qui reçoit la cagnotte puis quitte sans avoir terminé son cycle sera privé de la garantie et pourra faire l'objet de poursuites.
-              </p>
-            </div>
-          )}
 
           <button
             type="button"
@@ -462,11 +375,10 @@ export default function Rejoindre() {
               <Lock className="w-3 h-3" /> Dépôt de garantie requis
             </p>
             <p className="text-[10px] text-muted-foreground leading-relaxed">
-              Une caution de <strong className="text-foreground">{formatFCFA(group.guarantee_deposit)}</strong> sera exigée à l'étape suivante. 
-              Elle est bloquée jusqu'à la fin du cycle et remboursée si vous avez cotisé à temps.
+              Une garantie bancaire est requise pour ce groupe. Le montant recommandé est de <strong className="text-foreground">{formatFCFA(group.guarantee_deposit)}</strong>, fourni sous forme de numéro de compte partenaire.
             </p>
-            <p className="text-[10px] text-[hsl(var(--tc-amber))] mt-2">
-              Les titres de propriété ou garanties bancaires sont acceptés. Si un membre reçoit la cagnotte puis tente de quitter sans terminer son cycle, il perdra cette garantie et des poursuites pourront être engagées.
+            <p className="text-[10px] text-[hsl(var(--tc-amber))] mt-2 leading-relaxed">
+              En cas d'impayé, notre banque partenaire paye d'abord à votre place, puis récupère les fonds auprès de vous. Cette garantie est obligatoire pour finaliser votre adhésion.
             </p>
           </div>
         )}
