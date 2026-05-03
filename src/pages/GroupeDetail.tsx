@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import TopBar from "@/components/layout/TopBar";
 import TCAvatar from "@/components/ui/tc-avatar";
 import ProgressBar from "@/components/ui/ProgressBar";
-import { Settings, Users, Clock, TrendingUp, Shield, Database, Cpu, Link2, CheckCircle2, CircleDashed, AlertCircle } from "lucide-react";
+import { Settings, Users, Clock, TrendingUp, Shield, Database, Cpu, Link2, CheckCircle2, CircleDashed, AlertCircle, Banknote } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { runTontineAutomation } from "@/lib/tontineAutomation";
