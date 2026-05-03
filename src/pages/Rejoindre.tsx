@@ -209,7 +209,7 @@ export default function Rejoindre() {
               <div className="space-y-2">
                 <p className="text-sm font-semibold text-foreground">Garantie bancaire obligatoire</p>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Ce groupe exige un compte bancaire partenaire comme garantie. En cas de cotisation manquante, la banque avance le montant pour le groupe et assure le recouvrement.
+                  Ce groupe exige un compte bancaire partenaire comme garantie. En cas de retard, la banque paie automatiquement le lendemain pour le membre en défaut, puis récupère la dette plus tard.
                 </p>
               </div>
             </div>
@@ -226,8 +226,8 @@ export default function Rejoindre() {
               placeholder="Ex : BOA-1234567-ABJ-003"
               className="w-full bg-card border border-border rounded-2xl px-4 py-3 text-sm outline-none focus:border-[hsl(var(--tc-green))] transition-colors"
             />
-            <p className="text-[10px] text-[hsl(var(--tc-amber))] mt-3 leading-relaxed">
-              ⚠️ Ce numéro est indispensable pour confirmer votre adhésion. La banque partenaire valide ensuite la garantie avant que vous puissiez participer aux tours.
+            <p className="text-[10px] text-[hsl(var(--tc-blue))] mt-3 leading-relaxed">
+              ⚠️ Ce numéro est indispensable pour confirmer votre adhésion. La banque partenaire valide la garantie et veille à ce que le cycle dure jusqu’à ce que tous aient reçu leur tour.
             </p>
           </div>
 
@@ -379,7 +379,7 @@ export default function Rejoindre() {
               <div>
                 <p className="text-sm font-semibold text-foreground">Garantie bancaire obligatoire</p>
                 <p className="text-[10px] text-muted-foreground leading-relaxed mt-2">
-                  Ce groupe valide l’adhésion uniquement via un compte bancaire partenaire. La banque garantit le cycle et couvre tout incident de paiement.
+                  Ce groupe valide l’adhésion uniquement via un compte bancaire partenaire. La banque paie le lendemain pour les retards et le cycle continue jusqu'à ce que chaque membre ait reçu son argent.
                 </p>
               </div>
             </div>

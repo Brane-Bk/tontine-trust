@@ -37,10 +37,10 @@
     --tc-text-primary: 222 47% 11%;
     --tc-text-secondary: 215 19% 35%;
     --tc-text-tertiary: 213 14% 62%;
-    --tc-green: 160 42% 38%;
-    --tc-green-dark: 160 40% 32%;
-    --tc-blue: 217 91% 60%;
-    --tc-amber: 38 92% 50%;
+    --tc-green: 184 55% 36%;
+    --tc-green-dark: 184 45% 28%;
+    --tc-blue: 204 90% 50%;
+    --tc-amber: 34 95% 55%;
     --tc-red: 0 84% 60%;
     --tc-purple: 258 90% 66%;
   }
@@ -98,19 +98,19 @@
 
 @layer utilities {
   .tc-gradient-green {
-    background: linear-gradient(135deg, hsl(160 40% 32%), hsl(160 42% 40%));
+    background: linear-gradient(135deg, hsl(184 55% 36%), hsl(190 62% 42%));
   }
   .tc-gradient-green-soft {
-    background: linear-gradient(135deg, hsl(160 38% 34%), hsl(160 40% 42%));
+    background: linear-gradient(135deg, hsl(184 55% 31%), hsl(190 65% 40%));
   }
   .tc-gradient-hero {
-    background: linear-gradient(135deg, hsl(160 38% 30%), hsl(160 40% 38%));
+    background: linear-gradient(135deg, hsl(184 48% 32%), hsl(190 55% 37%));
   }
   .tc-shadow-green {
-    box-shadow: 0 4px 18px hsla(160, 40%, 36%, 0.22);
+    box-shadow: 0 4px 18px hsla(184, 45%, 22%, 0.22);
   }
   .tc-shadow-green-soft {
-    box-shadow: 0 3px 14px hsla(160, 38%, 38%, 0.18);
+    box-shadow: 0 3px 14px hsla(190, 55%, 25%, 0.18);
   }
   .tc-shadow-card {
     box-shadow: 0 1px 3px hsla(0, 0%, 0%, 0.1), 0 1px 2px hsla(0, 0%, 0%, 0.06);

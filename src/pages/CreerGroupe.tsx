@@ -38,7 +38,7 @@ export default function CreerGroupe() {
     name: "",
     amount: "",
     frequency: "Mensuelle" as Frequency,
-    otherMembers: "4",   // nombre d'autres membres (hors créateur)
+    memberCount: "5",   // nombre total de membres (vous inclus)
     order: "random",
     penalty: "5",
     guarantee: "",
@@ -55,8 +55,8 @@ export default function CreerGroupe() {
     setShowIntro(false);
   };
 
-  const totalMembers = (parseInt(form.otherMembers, 10) || 0) + 1; // +1 pour le créateur
-  const clampedMembers = Math.min(Math.max(totalMembers, 2), 50);
+  const totalMembers = Math.min(Math.max(parseInt(form.memberCount, 10) || 0, 2), 50);
+  const clampedMembers = totalMembers;
 
   const handleCreate = async () => {
     if (!user) return;
@@ -68,18 +68,18 @@ export default function CreerGroupe() {
       toast.error("Votre numéro de compte bancaire partenaire est obligatoire");
       return;
     }
-    const others = parseInt(form.otherMembers, 10);
-    if (!others || others < 1) {
-      toast.error("Il faut au moins 2 membres au total (vous + 1 autre)");
+    const members = parseInt(form.memberCount, 10);
+    if (!members || members < 2) {
+      toast.error("Il faut au moins 2 membres au total, créateur inclus.");
       return;
     }
-    if (others > 49) {
+    if (members > 50) {
       toast.error("Le groupe ne peut pas dépasser 50 membres au total.");
       return;
     }
     setLoading(true);
     try {
-      const maxMembers = totalMembers; // créateur + autres
+      const maxMembers = totalMembers;
       const initials = form.name.trim()
         .split(" ")
         .map((w) => w[0])
@@ -303,27 +303,27 @@ export default function CreerGroupe() {
 
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">
-                Nombre de participants (hors vous)
+                Nombre total de membres (vous inclus)
               </label>
               <p className="text-[10px] text-muted-foreground mb-2 leading-relaxed bg-[hsla(160,84%,39%,0.06)] border border-[hsla(160,84%,39%,0.15)] rounded-lg px-2.5 py-2">
-                💡 <strong>Vous êtes automatiquement membre n°1.</strong> Entrez ici le nombre d'autres personnes qui peuvent rejoindre. Total : {clampedMembers} membres.
+                💡 <strong>Le créateur est inclus automatiquement.</strong> Entrez le nombre total de participants. Total : {clampedMembers} membres.
               </p>
               <input
                 type="number"
-                value={form.otherMembers}
+                value={form.memberCount}
                 onChange={(e) => {
                   const value = parseInt(e.target.value, 10);
-                  if (!isNaN(value) && value > 49) {
-                    setForm({ ...form, otherMembers: "49" });
+                  if (!isNaN(value) && value > 50) {
+                    setForm({ ...form, memberCount: "50" });
                   } else {
-                    setForm({ ...form, otherMembers: e.target.value });
+                    setForm({ ...form, memberCount: e.target.value });
                   }
                 }}
-                min="1"
-                max="49"
+                min="2"
+                max="50"
                 className="w-full px-3 py-2.5 rounded-xl border border-border bg-card text-sm outline-none focus:border-[hsl(var(--tc-green))] transition-colors"
               />
-              {form.amount && parseInt(form.otherMembers) > 0 && (
+              {form.amount && parseInt(form.memberCount) >= 2 && (
                 <p className="text-[10px] text-muted-foreground mt-1 ml-1">
                   Chaque membre reçoit{" "}
                   <strong className="text-[hsl(var(--tc-green))]">
@@ -336,7 +336,7 @@ export default function CreerGroupe() {
 
             <button
               onClick={() => setStep(2)}
-              disabled={!form.name.trim() || !form.amount || parseInt(form.otherMembers) < 1}
+              disabled={!form.name.trim() || !form.amount || parseInt(form.memberCount) < 2}
               className="w-full py-3 rounded-xl text-sm font-semibold text-white tc-gradient-green tc-shadow-green disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
             >
               Suivant <ChevronRight className="w-4 h-4" />
@@ -404,7 +404,7 @@ export default function CreerGroupe() {
                     Compte bancaire partenaire (garantie) — Obligatoire
                   </label>
                   <p className="text-[10px] text-muted-foreground leading-relaxed">
-                    Ce compte sera associé à votre adhésion. Il permet à la banque partenaire de garantir le cycle si un membre est en défaut.
+                    Ce compte sera associé à votre adhésion. En cas de retard d’un membre, la banque peut avancer le paiement et récupérer ensuite lorsque viendra le tour du débiteur.
                   </p>
                 </div>
                 <span className="inline-flex items-center rounded-full bg-[hsla(38,92%,50%,0.12)] px-2.5 py-1 text-[10px] font-semibold text-[hsl(var(--tc-amber))]">
@@ -457,7 +457,7 @@ export default function CreerGroupe() {
               </p>
               <div className="flex flex-col gap-1.5 text-[11px]">
                 <div className="flex justify-between"><span className="text-muted-foreground">Nom</span><span className="font-medium">{form.name || "—"}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Membres total</span><span className="font-medium">{totalMembers} (vous + {parseInt(form.otherMembers) || "?"} autres)</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Membres total</span><span className="font-medium">{totalMembers} membres</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Cotisation</span><span className="font-medium">{form.amount ? new Intl.NumberFormat("fr-FR").format(parseFloat(form.amount)) + " FCFA" : "—"}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Fréquence</span><span className="font-medium">{form.frequency}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Cagnotte par tour</span><span className="font-bold text-[hsl(var(--tc-green))]">{form.amount ? new Intl.NumberFormat("fr-FR").format(parseFloat(form.amount) * totalMembers) + " FCFA" : "—"}</span></div>

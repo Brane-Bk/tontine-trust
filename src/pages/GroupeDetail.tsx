@@ -337,12 +337,13 @@ export default function GroupeDetail() {
               <p className="text-[11px] font-semibold text-foreground/90">Garantie bancaire partenaire</p>
               <p className="text-[10px] text-muted-foreground">Compte bancaire obligatoire</p>
             </div>
-            <span className="inline-flex items-center rounded-full bg-[hsla(38,92%,50%,0.16)] px-2.5 py-1 text-[10px] font-semibold text-[hsl(var(--tc-amber))]">
+            <span className="inline-flex items-center rounded-full bg-[hsla(204,90%,50%,0.16)] px-2.5 py-1 text-[10px] font-semibold text-[hsl(var(--tc-blue))]">
               Vérifiée par l’admin
             </span>
           </div>
           <p className="text-[10px] text-muted-foreground leading-relaxed">
-            Une banque partenaire avance les paiements en cas de défaut, puis récupère les fonds auprès du membre défaillant. Cette garantie renforce la confiance et protège le groupe.
+            En cas de retard, la banque paie le lendemain pour le membre concerné. Elle peut avancer plusieurs tours, et la recovere plus tard lorsque ce sera au tour du membre défaillant.
+            Le cycle s’arrête uniquement quand chaque membre a reçu son versement.
           </p>
         </div>
       </div>
