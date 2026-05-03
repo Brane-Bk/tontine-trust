@@ -242,11 +242,9 @@ export default function GroupeDetail() {
           </div>
         )}
 
-        <p className="text-[10px] text-muted-foreground mb-3 leading-relaxed rounded-lg bg-muted/40 px-2.5 py-2 border border-border/60">
+        <p className="text-[10px] text-muted-foreground mb-3 leading-relaxed rounded-3xl bg-[hsla(160,84%,39%,0.06)] px-3 py-3 border border-[hsla(160,84%,39%,0.15)]">
           <Shield className="w-3 h-3 inline-block mr-1 align-text-bottom text-[hsl(var(--tc-green))] opacity-80" />
-          Un dépôt via <strong className="font-medium">Portefeuille</strong> augmente votre solde. Une cotisation par{" "}
-          <strong className="font-medium">Mobile Money</strong> alimente directement la cagnotte sans créditer le portefeuille. À
-          l’échéance, un prélèvement automatique est tenté si le solde suffit.
+          Garantie bancaire partenaire obligatoire pour tous les membres. La banque avance le paiement si un membre est en défaut, puis assure le recouvrement.
         </p>
 
         {sorted.length === 0 ? (
@@ -332,17 +330,22 @@ export default function GroupeDetail() {
         )}
       </div>
 
-      {group.guarantee_deposit > 0 && (
-        <div className="px-4 pb-3">
-          <div className="p-3 rounded-xl bg-[hsla(45,28%,95%,0.85)] border border-[hsla(38,22%,82%,0.7)] dark:bg-[hsla(35,15%,18%,0.4)]">
-            <p className="text-[11px] font-medium text-foreground/85 mb-0.5">Dépôt de garantie bancaire</p>
-            <p className="text-xs text-muted-foreground">{formatFCFA(group.guarantee_deposit)} requis · numéro de compte partenaire</p>
-            <p className="text-[10px] text-[hsl(var(--tc-amber))] mt-1 leading-relaxed">
-              Une banque partenaire avance le paiement si un membre fait défaut, puis se charge de récupérer les fonds auprès du membre défaillant. Cette garantie est obligatoire pour rejoindre le groupe.
-            </p>
+      <div className="px-4 pb-3">
+        <div className="p-4 rounded-3xl border border-[hsla(38,92%,50%,0.14)] bg-[hsla(38,92%,50%,0.07)] shadow-sm">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div>
+              <p className="text-[11px] font-semibold text-foreground/90">Garantie bancaire partenaire</p>
+              <p className="text-[10px] text-muted-foreground">Compte bancaire obligatoire</p>
+            </div>
+            <span className="inline-flex items-center rounded-full bg-[hsla(38,92%,50%,0.16)] px-2.5 py-1 text-[10px] font-semibold text-[hsl(var(--tc-amber))]">
+              Vérifiée par l’admin
+            </span>
           </div>
+          <p className="text-[10px] text-muted-foreground leading-relaxed">
+            Une banque partenaire avance les paiements en cas de défaut, puis récupère les fonds auprès du membre défaillant. Cette garantie renforce la confiance et protège le groupe.
+          </p>
         </div>
-      )}
+      </div>
 
       <div className="px-4">
         {isMember ? (

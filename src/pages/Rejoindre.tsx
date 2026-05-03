@@ -80,8 +80,8 @@ export default function Rejoindre() {
   }
 
   const scoreOk = !profile || profile.score >= group.min_score;
-  // Re-fetch live count before checking (prevents race condition)
-  const hasGuarantee = group.guarantee_deposit > 0;
+  // Tous les groupes exigent maintenant un compte bancaire partenaire
+  const hasGuarantee = true;
   const expectedPayout = group.contribution_amount * group.max_members;
   const isFull = group.members_count >= group.max_members;
   const isCompleted = group.status === "completed" || group.status === "cancelled";
@@ -199,41 +199,44 @@ export default function Rejoindre() {
   if (step === "guarantee") {
     return (
       <div className="animate-slide-up bg-background min-h-screen pb-8">
-        <TopBar title="Dépôt de Garantie" backTo={() => setStep("info")} />
+        <TopBar title="Garantie Bancaire" backTo={() => setStep("info")} />
         <div className="px-4">
-          <div className="p-3 rounded-xl bg-[hsla(38,92%,50%,0.08)] border border-[hsla(38,92%,50%,0.2)] mb-5">
-            <p className="text-[11px] font-semibold text-[hsl(var(--tc-amber))] mb-1">
-              🔒 Garantie bancaire obligatoire
-            </p>
-            <p className="text-[10px] text-muted-foreground leading-relaxed">
-              Ce groupe exige une garantie bancaire via un compte partenaire. Si vous ne payez pas votre cotisation, la banque avance le montant pour le groupe et se charge ensuite de récupérer les fonds auprès de vous.
-            </p>
-            <p className="text-[10px] text-[hsl(var(--tc-amber))] mt-2">
-              Le numéro de compte bancaire partenaire doit être fourni ci-dessous. Il sera vérifié par l'administrateur.
-            </p>
+          <div className="p-4 rounded-3xl border border-[hsla(38,92%,50%,0.18)] bg-gradient-to-br from-[hsla(38,92%,50%,0.06)] via-transparent to-[hsla(38,92%,50%,0.02)] mb-5 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-[hsla(38,92%,50%,0.16)] flex items-center justify-center text-[hsl(var(--tc-amber))] text-lg">
+                🔒
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-foreground">Garantie bancaire obligatoire</p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Ce groupe exige un compte bancaire partenaire comme garantie. En cas de cotisation manquante, la banque avance le montant pour le groupe et assure le recouvrement.
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="animate-fade-in mb-5">
-            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+            <label className="block text-xs font-semibold text-muted-foreground mb-2">
               Numéro de compte bancaire partenaire
             </label>
-            <textarea
+            <input
+              type="text"
               value={guaranteeProof}
               onChange={(e) => setGuaranteeProof(e.target.value)}
               placeholder="Ex : BOA-1234567-ABJ-003"
-              className="w-full bg-card border border-border rounded-xl p-3 text-sm min-h-[100px] outline-none focus:border-[hsl(var(--tc-green))] transition-colors resize-none"
+              className="w-full bg-card border border-border rounded-2xl px-4 py-3 text-sm outline-none focus:border-[hsl(var(--tc-green))] transition-colors"
             />
-            <p className="text-[10px] text-[hsl(var(--tc-amber))] mt-1.5 leading-relaxed">
-              ⚠️ En cas d'impayé, notre banque partenaire paie d'abord à votre place, puis fera le recouvrement auprès de vous. Ce compte bancaire est obligatoire pour rejoindre le groupe.
+            <p className="text-[10px] text-[hsl(var(--tc-amber))] mt-3 leading-relaxed">
+              ⚠️ Ce numéro est indispensable pour confirmer votre adhésion. La banque partenaire valide ensuite la garantie avant que vous puissiez participer aux tours.
             </p>
           </div>
 
           <button
             type="button"
             onClick={handleGuaranteeSubmit}
-            className="w-full py-3.5 rounded-xl text-sm font-bold text-white tc-gradient-green tc-shadow-green"
+            className="w-full py-3.5 rounded-3xl text-sm font-bold text-white tc-gradient-green tc-shadow-green"
           >
-            Confirmer la garantie →
+            Valider mon compte partenaire
           </button>
         </div>
       </div>
@@ -267,20 +270,18 @@ export default function Rejoindre() {
           </div>
           <h2 className="text-xl font-bold mb-2">Bienvenue dans "{group.name}" !</h2>
           <p className="text-xs text-muted-foreground mb-5 leading-relaxed px-4">
-            {group.guarantee_deposit > 0
-              ? "⏳ Votre garantie bancaire est en cours d'examen. Vous recevrez une notification une fois validée."
-              : "✅ Vous êtes maintenant membre du groupe. Cotisez dès que le groupe est actif."}
+            ⏳ Votre garantie bancaire est en cours d'examen. Vous recevrez une notification une fois validée.
           </p>
 
-          <div className="bg-[hsla(160,84%,39%,0.06)] border border-[hsla(160,84%,39%,0.15)] rounded-xl p-4 text-left mb-6 mx-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-              Comment ça marche maintenant ?
+          <div className="bg-[hsla(160,84%,39%,0.08)] border border-[hsla(160,84%,39%,0.18)] rounded-3xl p-5 text-left mb-6 mx-2 shadow-sm">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-3">
+              Prochaine étape
             </p>
-            <div className="space-y-1.5 text-[11px] text-muted-foreground leading-relaxed">
-              <p>① Le groupe démarre quand TOUS les membres ont rejoint.</p>
-              <p>② À chaque tour, cotisez <strong className="text-foreground">{formatFCFA(group.contribution_amount + 20)}</strong> ({formatFCFA(group.contribution_amount)} + 20 frais).</p>
-              <p>③ Quand tout le monde a payé, la cagnotte de <strong className="text-foreground">{formatFCFA(group.contribution_amount * group.total_rounds)}</strong> est versée automatiquement au bénéficiaire du tour.</p>
-              <p>④ Un retard bloque votre portefeuille. Payez à temps !</p>
+            <div className="space-y-2 text-[11px] text-muted-foreground leading-relaxed">
+              <p>① Votre compte partenaire est enregistré et passe en validation.</p>
+              <p>② Quand le groupe est complet, les tours démarrent automatiquement.</p>
+              <p>③ À chaque tour, vous cotisez le montant affiché, puis le bénéficiaire reçoit la cagnotte.</p>
+              <p>④ En cas de retard, votre participation au cycle est suspendue jusqu'à régularisation.</p>
             </div>
           </div>
 
@@ -370,16 +371,18 @@ export default function Rejoindre() {
 
         {/* Garantie */}
         {hasGuarantee && (
-          <div className="p-3 rounded-xl bg-[hsla(38,92%,50%,0.08)] border border-[hsla(38,92%,50%,0.15)] mb-4">
-            <p className="text-[11px] font-semibold text-[hsl(var(--tc-amber))] mb-1 flex items-center gap-1">
-              <Lock className="w-3 h-3" /> Dépôt de garantie requis
-            </p>
-            <p className="text-[10px] text-muted-foreground leading-relaxed">
-              Une garantie bancaire est requise pour ce groupe. La banque partenaire se porte garante à hauteur de <strong className="text-foreground">{formatFCFA(group.guarantee_deposit)}</strong>.
-            </p>
-            <p className="text-[10px] text-[hsl(var(--tc-amber))] mt-2 leading-relaxed">
-              En cas d'impayé, notre banque partenaire paye d'abord à votre place, puis récupère les fonds auprès de vous. Cette garantie est obligatoire pour finaliser votre adhésion.
-            </p>
+          <div className="p-4 rounded-3xl border border-[hsla(38,92%,50%,0.18)] bg-[hsla(38,92%,50%,0.07)] mb-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-2xl bg-[hsla(38,92%,50%,0.18)] flex items-center justify-center text-[hsl(var(--tc-amber))]">
+                <Lock className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Garantie bancaire obligatoire</p>
+                <p className="text-[10px] text-muted-foreground leading-relaxed mt-2">
+                  Ce groupe valide l’adhésion uniquement via un compte bancaire partenaire. La banque garantit le cycle et couvre tout incident de paiement.
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
@@ -411,9 +414,7 @@ export default function Rejoindre() {
           disabled={!scoreOk || isFull || alreadyMember || isCompleted}
           className="w-full py-3.5 rounded-xl text-sm font-bold text-white tc-gradient-green tc-shadow-green disabled:opacity-40 flex items-center justify-center gap-2"
         >
-          {alreadyMember ? "Déjà membre ✓" : isCompleted ? "Inscriptions closes" : isFull ? "Groupe complet" : hasGuarantee
-            ? <><Lock className="w-4 h-4" /> {`Rejoindre · Garantie requise`}</>
-            : <><ChevronRight className="w-4 h-4" /> Rejoindre ce groupe</>}
+          {alreadyMember ? "Déjà membre ✓" : isCompleted ? "Inscriptions closes" : isFull ? "Groupe complet" : <><Lock className="w-4 h-4" /> {`Rejoindre · Garantie requise`}</>}
         </button>
         {!alreadyMember && !isFull && (
           <p className="text-[10px] text-muted-foreground text-center mt-2">

@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { initPayment, payFromWallet, TalyPayResponse } from "@/lib/talypay";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { toast } from "sonner";
+import { runTontineAutomation } from "@/lib/tontineAutomation";
 
 const OPERATORS = [
   { id: "mtn", name: "MTN MoMo", shortName: "MTN", color: "#FFA500", textColor: "#fff" },
@@ -101,6 +102,7 @@ export default function Cotiser() {
         .eq("group_id", selectedGroup.id)
         .eq("profile_id", user.id);
 
+      await runTontineAutomation();
       await refreshProfile();
       setStep("done");
     } else {
@@ -116,35 +118,38 @@ export default function Cotiser() {
         <div className="px-4 pb-6">
 
           {/* Group selector */}
-          <label className="block text-xs font-medium text-muted-foreground mb-1.5">Groupe à cotiser</label>
+          <label className="block text-xs font-medium text-muted-foreground mb-2">Choisissez votre groupe</label>
           {groups.length === 0 ? (
-            <div className="border border-border rounded-xl p-3 mb-4 text-center bg-card">
-              <p className="text-xs text-muted-foreground">Vous n'êtes membre d'aucun groupe.</p>
-              <button onClick={() => navigate("/rechercher")} className="text-xs text-[hsl(var(--tc-green))] font-semibold mt-1">Rejoindre un groupe →</button>
+            <div className="rounded-3xl border border-border bg-card p-4 mb-4 text-center shadow-sm">
+              <p className="text-sm font-semibold text-foreground mb-2">Aucun groupe actif</p>
+              <p className="text-[11px] text-muted-foreground mb-3">Rejoignez un groupe pour commencer à cotiser et sécuriser votre participation.</p>
+              <button onClick={() => navigate("/rechercher")} className="inline-flex items-center gap-1 text-xs font-semibold text-[hsl(var(--tc-green))]">
+                Rejoindre un groupe →
+              </button>
             </div>
           ) : (
-            <div className="flex flex-col gap-2 mb-4">
+            <div className="space-y-3 mb-4">
               {groups.map((g) => (
                 <button
                   key={g.id}
                   onClick={() => setSelectedGroup(g)}
-                  className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all ${
+                  className={`w-full rounded-3xl p-4 text-left transition-all border-2 shadow-sm ${
                     selectedGroup?.id === g.id
-                      ? "border-[hsl(var(--tc-green))] bg-[hsla(160,84%,39%,0.06)]"
-                      : "border-border bg-card"
+                      ? "border-[hsl(var(--tc-green))] bg-[hsla(160,84%,39%,0.08)]"
+                      : "border-border bg-card hover:border-[hsl(var(--tc-green))]"
                   }`}
                 >
-                  <div className="text-left">
-                    <p className="text-sm font-semibold">{g.name}</p>
-                    <p className="text-[11px] text-[hsl(var(--tc-red))] font-medium">
-                      {new Intl.NumberFormat("fr-FR").format(g.contribution_amount)} FCFA à cotiser
-                    </p>
-                  </div>
-                  {selectedGroup?.id === g.id && (
-                    <div className="w-5 h-5 rounded-full bg-[hsl(var(--tc-green))] flex items-center justify-center shrink-0">
-                      <Check className="w-3 h-3 text-white" />
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{g.name}</p>
+                      <p className="text-[11px] text-muted-foreground mt-1">{new Intl.NumberFormat("fr-FR").format(g.contribution_amount)} FCFA par tour</p>
                     </div>
-                  )}
+                    {selectedGroup?.id === g.id && (
+                      <div className="w-7 h-7 rounded-full bg-[hsl(var(--tc-green))] flex items-center justify-center text-white">
+                        <Check className="w-4 h-4" />
+                      </div>
+                    )}
+                  </div>
                 </button>
               ))}
             </div>
@@ -166,17 +171,17 @@ export default function Cotiser() {
               <button
                 key={op.id}
                 onClick={() => setOperator(op.id)}
-                className={`py-3 rounded-xl border-2 text-xs font-semibold transition-all ${
+                className={`rounded-3xl p-3 text-xs font-semibold transition-all border-2 ${
                   operator === op.id
-                    ? "border-[hsl(var(--tc-green))] text-[hsl(var(--tc-green))] bg-[hsla(160,84%,39%,0.06)]"
-                    : "border-border text-muted-foreground bg-card"
+                    ? "border-[hsl(var(--tc-green))] bg-[hsla(160,84%,39%,0.08)] text-[hsl(var(--tc-green))]"
+                    : "border-border bg-card text-muted-foreground hover:border-[hsl(var(--tc-green))]"
                 }`}
               >
                 <div
-                  className="w-7 h-7 rounded-lg mx-auto mb-1.5 flex items-center justify-center text-white text-[9px] font-bold"
+                  className="w-7 h-7 rounded-2xl mx-auto mb-2 flex items-center justify-center text-white text-[10px] font-bold"
                   style={{ background: op.color }}
                 >
-                  {op.shortName.charAt(0)}
+                  {op.shortName}
                 </div>
                 {op.shortName}
               </button>
@@ -185,18 +190,25 @@ export default function Cotiser() {
 
           {/* Summary */}
           {selectedGroup && (
-            <div className="bg-[hsla(160,84%,39%,0.06)] border border-[hsla(160,84%,39%,0.2)] rounded-xl p-3 mb-5">
-              <div className="flex justify-between text-xs mb-1.5">
-                <span className="text-muted-foreground">Cotisation</span>
-                <span className="font-medium">{new Intl.NumberFormat("fr-FR").format(selectedGroup.contribution_amount)} FCFA</span>
-              </div>
-              <div className="flex justify-between text-xs mb-1.5">
-                <span className="text-muted-foreground">Frais réseau</span>
-                <span className="font-medium">{fees} FCFA</span>
-              </div>
-              <div className="flex justify-between text-sm font-bold border-t border-[hsla(160,84%,39%,0.2)] pt-2 mt-1">
-                <span>Total</span>
-                <span className="text-[hsl(var(--tc-green))]">{new Intl.NumberFormat("fr-FR").format(total)} FCFA</span>
+            <div className="rounded-3xl border border-[hsla(160,84%,39%,0.18)] bg-[hsla(160,84%,39%,0.06)] p-4 mb-5 shadow-sm">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-3">Résumé de la cotisation</p>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Groupe</span>
+                  <span className="text-foreground font-medium">{selectedGroup.name}</span>
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Cotisation</span>
+                  <span className="text-foreground font-medium">{new Intl.NumberFormat("fr-FR").format(selectedGroup.contribution_amount)} FCFA</span>
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Frais réseau</span>
+                  <span className="text-foreground font-medium">{fees} FCFA</span>
+                </div>
+                <div className="flex justify-between border-t border-[hsla(160,84%,39%,0.2)] pt-3 text-sm font-semibold">
+                  <span>Total</span>
+                  <span className="text-[hsl(var(--tc-green))]">{new Intl.NumberFormat("fr-FR").format(total)} FCFA</span>
+                </div>
               </div>
             </div>
           )}
@@ -228,50 +240,46 @@ export default function Cotiser() {
       <div className="animate-slide-up">
         <TopBar title="Confirmer le paiement" backTo="/cotiser" backLabel="Retour" />
         <div className="px-4 pb-6">
-          <div className="text-center mb-6 pt-2">
+          <div className="rounded-3xl bg-[hsla(160,84%,39%,0.08)] border border-[hsla(160,84%,39%,0.18)] p-5 text-center mb-6 shadow-sm">
             <p className="text-3xl font-bold text-[hsl(var(--tc-green))]">{new Intl.NumberFormat("fr-FR").format(total)}</p>
-            <p className="text-sm text-muted-foreground">FCFA</p>
+            <p className="text-sm text-muted-foreground mt-1">Total à payer</p>
           </div>
 
-          <div className="bg-card border border-border rounded-xl divide-y divide-border mb-5">
-            <div className="flex justify-between px-4 py-3 text-sm">
+          <div className="rounded-3xl border border-border bg-card shadow-sm overflow-hidden mb-5">
+            <div className="flex justify-between px-4 py-4 text-sm">
               <span className="text-muted-foreground">Groupe</span>
               <span className="font-semibold">{selectedGroup?.name}</span>
             </div>
             {operator !== "wallet" && (
-              <div className="flex justify-between px-4 py-3 text-sm">
+              <div className="flex justify-between px-4 py-4 text-sm border-t border-border">
                 <span className="text-muted-foreground">Téléphone</span>
                 <span className="font-semibold">{phone}</span>
               </div>
             )}
-            <div className="flex justify-between px-4 py-3 text-sm">
+            <div className="flex justify-between px-4 py-4 text-sm border-t border-border">
               <span className="text-muted-foreground">Moyen</span>
-              <div className="flex items-center gap-1.5">
-                <div className="w-4 h-4 rounded" style={{ background: selectedOp.color }} />
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-2xl" style={{ background: selectedOp.color }} />
                 <span className="font-semibold">{selectedOp.name}</span>
               </div>
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-[hsla(38,92%,50%,0.08)] border border-[hsla(38,92%,50%,0.2)] mb-5 text-center">
+          <div className="p-4 rounded-3xl border border-[hsla(38,92%,50%,0.18)] bg-[hsla(38,92%,50%,0.07)] mb-5 text-center text-[11px] text-[hsl(var(--tc-amber))] shadow-sm">
             {operator === "wallet" ? (
-              <p className="text-[11px] text-[hsl(var(--tc-amber))] font-medium">
-                Le montant sera déduit immédiatement de votre portefeuille.
-              </p>
+              "Le montant sera prélevé immédiatement depuis votre portefeuille Tontine."
             ) : (
-              <p className="text-[11px] text-[hsl(var(--tc-amber))] font-medium">
-                📲 Une notification sera envoyée sur <strong>{phone}</strong> pour valider le paiement
-              </p>
+              <>📲 Une notification sera envoyée sur <strong className="text-foreground">{phone}</strong> pour valider le paiement.</>
             )}
           </div>
 
           <button
             onClick={handleConfirm}
-            className="w-full py-3.5 rounded-xl text-sm font-bold text-white tc-gradient-green tc-shadow-green mb-3"
+            className="w-full py-3.5 rounded-3xl text-sm font-bold text-white tc-gradient-green tc-shadow-green mb-3"
           >
             🔒 Confirmer le paiement
           </button>
-          <button onClick={() => setStep("form")} className="w-full py-2.5 text-sm text-muted-foreground">
+          <button onClick={() => setStep("form")} className="w-full py-2.5 rounded-3xl text-sm text-muted-foreground border border-border bg-card">
             ← Modifier
           </button>
         </div>

@@ -64,8 +64,8 @@ export default function CreerGroupe() {
       toast.error("Veuillez remplir le nom et le montant");
       return;
     }
-    if (!form.guarantee || parseFloat(form.guarantee) <= 0) {
-      toast.error("Le montant de la garantie bancaire est obligatoire");
+    if (!form.guarantee.trim()) {
+      toast.error("Votre numéro de compte bancaire partenaire est obligatoire");
       return;
     }
     const others = parseInt(form.otherMembers, 10);
@@ -100,7 +100,7 @@ export default function CreerGroupe() {
           max_members: maxMembers,
           total_rounds: maxMembers,
           penalty_rate: parseFloat(form.penalty) || 5,
-          guarantee_deposit: parseFloat(form.guarantee) || 0,
+          guarantee_deposit: 0,
           order_type: form.order === "random" ? "random" : "manual",
           min_score: parseInt(form.minScore, 10) || 0,
           status: "pending",
@@ -118,6 +118,8 @@ export default function CreerGroupe() {
         role: "admin",
         turn_order: 1,
         status: "waiting",
+        guarantee_type: "bank",
+        guarantee_proof: form.guarantee,
         guarantee_status: "verified",
       });
       if (memberErr) {
@@ -395,21 +397,31 @@ export default function CreerGroupe() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                Montant de la garantie bancaire (FCFA) — Obligatoire
-              </label>
-              <p className="text-[10px] text-muted-foreground mb-1.5 leading-relaxed">
-                Les membres doivent fournir un numéro de compte bancaire partenaire. La banque paie si un membre manque à sa cotisation, puis récupère les fonds auprès de lui.
-              </p>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    Compte bancaire partenaire (garantie) — Obligatoire
+                  </label>
+                  <p className="text-[10px] text-muted-foreground leading-relaxed">
+                    Ce compte sera associé à votre adhésion. Il permet à la banque partenaire de garantir le cycle si un membre est en défaut.
+                  </p>
+                </div>
+                <span className="inline-flex items-center rounded-full bg-[hsla(38,92%,50%,0.12)] px-2.5 py-1 text-[10px] font-semibold text-[hsl(var(--tc-amber))]">
+                  Obligatoire
+                </span>
+              </div>
               <input
-                type="number"
+                type="text"
                 value={form.guarantee}
                 onChange={(e) => setForm({ ...form, guarantee: e.target.value })}
-                placeholder="Montant de garantie obligatoire"
-                min="1"
-                className="w-full px-3 py-2.5 rounded-xl border border-border bg-card text-sm outline-none focus:border-[hsl(var(--tc-green))] transition-colors"
+                placeholder="Ex : BOA-1234567-ABJ-003"
+                className="w-full px-4 py-3 rounded-3xl border border-border bg-card text-sm outline-none focus:border-[hsl(var(--tc-green))] transition-colors"
               />
+              <div className="rounded-3xl border border-[hsla(38,92%,50%,0.15)] bg-[hsla(38,92%,50%,0.06)] p-3 text-[10px] text-muted-foreground">
+                <p className="font-semibold text-[11px] text-foreground mb-1">Sécurité de la garantie</p>
+                <p>Le groupe est protégé par une banque partenaire. Votre compte est utilisé uniquement pour valider la garantie, pas pour prélever automatiquement sans notification.</p>
+              </div>
             </div>
 
             <div>
@@ -450,9 +462,7 @@ export default function CreerGroupe() {
                 <div className="flex justify-between"><span className="text-muted-foreground">Fréquence</span><span className="font-medium">{form.frequency}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Cagnotte par tour</span><span className="font-bold text-[hsl(var(--tc-green))]">{form.amount ? new Intl.NumberFormat("fr-FR").format(parseFloat(form.amount) * totalMembers) + " FCFA" : "—"}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Pénalité</span><span>{form.penalty}%</span></div>
-                {parseFloat(form.guarantee) > 0 && (
-                  <div className="flex justify-between"><span className="text-muted-foreground">Garantie</span><span>{new Intl.NumberFormat("fr-FR").format(parseFloat(form.guarantee))} FCFA</span></div>
-                )}
+                <div className="flex justify-between"><span className="text-muted-foreground">Garantie bancaire</span><span className="text-[hsl(var(--tc-green))] font-medium">Obligatoire</span></div>
               </div>
             </div>
 
