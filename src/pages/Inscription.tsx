@@ -4,15 +4,17 @@ import TopBar from "@/components/layout/TopBar";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import PhoneInput from "@/components/ui/PhoneInput";
+import { saveDemoAccount } from "@/lib/demoMultiAccount";
 
 export default function Inscription() {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+  const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [memoDemo, setMemoDemo] = useState(true);
 
   const handleSignUp = async () => {
     if (!email || !name || !phone || password.length < 6) {
@@ -40,6 +42,9 @@ export default function Inscription() {
 
       // Confirmation email désactivée dans Supabase → session immédiate
       if (data.session) {
+        if (memoDemo) {
+          saveDemoAccount(email, password, name);
+        }
         toast.success("Compte créé ! Bienvenue.");
         navigate("/home", { replace: true });
         return;
@@ -101,6 +106,18 @@ export default function Inscription() {
                 className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-card text-sm outline-none focus:border-[hsl(var(--tc-green))] transition-colors"
               />
             </div>
+
+            <label className="flex items-start gap-2 cursor-pointer mt-2">
+              <input
+                type="checkbox"
+                checked={memoDemo}
+                onChange={(e) => setMemoDemo(e.target.checked)}
+                className="w-4 h-4 mt-0.5 rounded border-border text-[hsl(var(--tc-green))]"
+              />
+              <span className="text-[11px] text-muted-foreground leading-snug">
+                <span className="font-medium text-foreground/85">Enregistrer sur cet appareil (démo)</span> — pour changer de compte rapidement après déconnexion. Stockage local non sécurisé.
+              </span>
+            </label>
 
             <button 
               onClick={handleSignUp} 
