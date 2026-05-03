@@ -162,7 +162,7 @@ export default function Rechercher() {
                 {/* Infos supplémentaires */}
                 <div className="flex gap-3 text-[10px] text-muted-foreground">
                   {g.penalty_rate > 0 && <span>Pénalité {g.penalty_rate}%</span>}
-                  {g.guarantee_deposit > 0 && <span>Caution {formatFCFA(g.guarantee_deposit)}</span>}
+                  {g.guarantee_deposit > 0 && <span>Garantie {formatFCFA(g.guarantee_deposit)}</span>}
                   {g.min_score > 0 && <span>Score min. {g.min_score}</span>}
                 </div>
               </button>

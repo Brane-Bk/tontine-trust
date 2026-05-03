@@ -96,30 +96,18 @@ export default function Home() {
 
         <p className="text-center text-[11px] text-white/70 mb-3 pt-1">Mes soldes</p>
 
-        <div className="grid grid-cols-2 gap-2 mb-1">
+        <div className="mb-1">
           <button
             type="button"
             onClick={() => navigate("/portefeuille")}
-            className="rounded-2xl bg-white/12 border border-white/20 px-3 py-3.5 text-left backdrop-blur-sm hover:bg-white/18 active:scale-[0.99] transition-all"
+            className="w-full rounded-2xl bg-white/12 border border-white/20 px-4 py-4 text-center backdrop-blur-sm hover:bg-white/18 active:scale-[0.99] transition-all flex flex-col items-center justify-center"
           >
             <div className="flex items-center gap-1.5 mb-2 text-white/75">
-              <Lock className="w-3.5 h-3.5" />
-              <span className="text-[10px] font-medium uppercase tracking-wide">Verrouillé</span>
+              <Wallet className="w-4 h-4" />
+              <span className="text-[11px] font-medium uppercase tracking-wide">Solde Disponible</span>
             </div>
-            <p className="text-lg font-bold leading-tight tabular-nums">{formatFCFA(profile?.total_locked ?? 0).replace(" FCFA", "")}</p>
-            <p className="text-[9px] text-white/55 mt-0.5">FCFA · cotisations et garanties</p>
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/portefeuille")}
-            className="rounded-2xl bg-white/12 border border-white/20 px-3 py-3.5 text-left backdrop-blur-sm hover:bg-white/18 active:scale-[0.99] transition-all"
-          >
-            <div className="flex items-center gap-1.5 mb-2 text-white/75">
-              <Wallet className="w-3.5 h-3.5" />
-              <span className="text-[10px] font-medium uppercase tracking-wide">Disponible</span>
-            </div>
-            <p className="text-lg font-bold leading-tight tabular-nums">{formatFCFA(profile?.wallet_balance ?? 0).replace(" FCFA", "")}</p>
-            <p className="text-[9px] text-white/55 mt-0.5">FCFA · portefeuille</p>
+            <p className="text-3xl font-bold leading-tight tabular-nums">{formatFCFA(profile?.wallet_balance ?? 0).replace(" FCFA", "")}</p>
+            <p className="text-[10px] text-white/55 mt-1.5">FCFA · TontineChain</p>
           </button>
         </div>
 

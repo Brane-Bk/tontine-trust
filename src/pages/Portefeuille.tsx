@@ -157,28 +157,15 @@ export default function Portefeuille() {
       <div className="px-4 pt-4">
         <div className="bg-gradient-to-br from-[hsl(var(--tc-green))] to-[hsl(160,40%,26%)] rounded-2xl p-4 text-white shadow-xl mb-6 relative overflow-hidden border border-white/10">
           <div className="absolute -right-10 -top-10 w-32 h-32 bg-white opacity-5 rounded-full blur-2xl pointer-events-none" />
-          <p className="text-[10px] font-medium text-white/75 text-center uppercase tracking-wider mb-3">Vue d’ensemble</p>
-          <div className="grid grid-cols-2 gap-0 divide-x divide-white/20">
-            <div className="pr-3 text-center">
-              <div className="flex items-center justify-center gap-1 text-white/70 mb-1.5">
-                <Lock className="w-3.5 h-3.5" />
-                <span className="text-[10px] font-medium">Verrouillé</span>
-              </div>
-              <p className="text-2xl font-bold tabular-nums leading-tight">
-                {new Intl.NumberFormat("fr-FR").format(Number(profile?.total_locked ?? 0))}
-              </p>
-              <p className="text-[10px] text-white/60 mt-0.5">FCFA</p>
+          <p className="text-[10px] font-medium text-white/75 text-center uppercase tracking-wider mb-3">Solde Disponible</p>
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-1 text-white/70 mb-1.5">
+              <Wallet className="w-3.5 h-3.5" />
             </div>
-            <div className="pl-3 text-center">
-              <div className="flex items-center justify-center gap-1 text-white/70 mb-1.5">
-                <Wallet className="w-3.5 h-3.5" />
-                <span className="text-[10px] font-medium">Disponible</span>
-              </div>
-              <p className="text-2xl font-bold tabular-nums leading-tight">
-                {new Intl.NumberFormat("fr-FR").format(Number(profile?.wallet_balance ?? 0))}
-              </p>
-              <p className="text-[10px] text-white/60 mt-0.5">FCFA</p>
-            </div>
+            <p className="text-3xl font-bold tabular-nums leading-tight">
+              {new Intl.NumberFormat("fr-FR").format(Number(profile?.wallet_balance ?? 0))}
+            </p>
+            <p className="text-xs text-white/60 mt-1">FCFA</p>
           </div>
           <p className="text-[10px] text-white/55 text-center mt-3">Soldes mis à jour à l’ouverture de cette page</p>
         </div>

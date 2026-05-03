@@ -250,7 +250,7 @@ export default function Rejoindre() {
         <div className="text-center">
           <p className="text-sm font-semibold">Adhésion en cours...</p>
           <p className="text-xs text-muted-foreground mt-1">
-            {hasGuarantee ? "Traitement de la caution en sécurité" : "Enregistrement dans le registre du groupe"}
+            {hasGuarantee ? "Enregistrement de la garantie bancaire" : "Enregistrement dans le registre du groupe"}
           </p>
         </div>
       </div>
@@ -267,8 +267,8 @@ export default function Rejoindre() {
           </div>
           <h2 className="text-xl font-bold mb-2">Bienvenue dans "{group.name}" !</h2>
           <p className="text-xs text-muted-foreground mb-5 leading-relaxed px-4">
-            {guaranteeType !== "money" && group.guarantee_deposit > 0
-              ? "⏳ Votre caution est en cours d'examen. Vous recevrez une notification une fois validée."
+            {group.guarantee_deposit > 0
+              ? "⏳ Votre garantie bancaire est en cours d'examen. Vous recevrez une notification une fois validée."
               : "✅ Vous êtes maintenant membre du groupe. Cotisez dès que le groupe est actif."}
           </p>
 
@@ -375,7 +375,7 @@ export default function Rejoindre() {
               <Lock className="w-3 h-3" /> Dépôt de garantie requis
             </p>
             <p className="text-[10px] text-muted-foreground leading-relaxed">
-              Une garantie bancaire est requise pour ce groupe. Le montant recommandé est de <strong className="text-foreground">{formatFCFA(group.guarantee_deposit)}</strong>, fourni sous forme de numéro de compte partenaire.
+              Une garantie bancaire est requise pour ce groupe. La banque partenaire se porte garante à hauteur de <strong className="text-foreground">{formatFCFA(group.guarantee_deposit)}</strong>.
             </p>
             <p className="text-[10px] text-[hsl(var(--tc-amber))] mt-2 leading-relaxed">
               En cas d'impayé, notre banque partenaire paye d'abord à votre place, puis récupère les fonds auprès de vous. Cette garantie est obligatoire pour finaliser votre adhésion.
@@ -412,7 +412,7 @@ export default function Rejoindre() {
           className="w-full py-3.5 rounded-xl text-sm font-bold text-white tc-gradient-green tc-shadow-green disabled:opacity-40 flex items-center justify-center gap-2"
         >
           {alreadyMember ? "Déjà membre ✓" : isCompleted ? "Inscriptions closes" : isFull ? "Groupe complet" : hasGuarantee
-            ? <><Lock className="w-4 h-4" /> {`Rejoindre · Caution ${formatFCFA(group.guarantee_deposit)}`}</>
+            ? <><Lock className="w-4 h-4" /> {`Rejoindre · Garantie requise`}</>
             : <><ChevronRight className="w-4 h-4" /> Rejoindre ce groupe</>}
         </button>
         {!alreadyMember && !isFull && (
