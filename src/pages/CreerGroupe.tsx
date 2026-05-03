@@ -117,7 +117,9 @@ export default function CreerGroupe() {
       toast.success("🎉 Groupe créé ! Vous êtes membre n°1.");
       navigate(`/groupe/${data.id}`);
     } catch (err: any) {
-      toast.error(err.message || "Erreur lors de la création");
+      console.error("[CreerGroupe] Full Error:", err);
+      const details = err.details || err.hint || "";
+      toast.error(err.message + (details ? ` (${details})` : "") || "Erreur lors de la création");
     } finally {
       setLoading(false);
     }

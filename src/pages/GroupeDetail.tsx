@@ -69,7 +69,8 @@ export default function GroupeDetail() {
 
   const fetchData = useCallback(async () => {
     if (!id) return;
-    await runTontineAutomation();
+    // Automation silencieuse — ne bloque jamais le chargement
+    try { await runTontineAutomation(); } catch (_) {}
     const [{ data: gRow }, { data: mRows }] = await Promise.all([
       supabase.from("groups").select("*").eq("id", id).single(),
       supabase.from("group_members").select("*, profiles(name, initials)").eq("group_id", id).order("turn_order"),

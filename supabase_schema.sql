@@ -504,16 +504,16 @@ $$;
 -- ============================================================================
 -- 10b. INTERVALLE selon la fréquence du groupe (échéances cotisation)
 -- ============================================================================
-CREATE OR REPLACE FUNCTION public.fn_freq_interval(f public.group_frequency)
+CREATE OR REPLACE FUNCTION public.fn_freq_interval(f text)
 RETURNS interval
 LANGUAGE sql
 IMMUTABLE AS $$
     SELECT CASE f
-        WHEN 'Journalier'::public.group_frequency     THEN interval '1 day'
-        WHEN 'Hebdomadaire'::public.group_frequency   THEN interval '7 days'
-        WHEN 'Bimensuelle'::public.group_frequency    THEN interval '14 days'
-        WHEN 'Mensuelle'::public.group_frequency      THEN interval '30 days'
-        WHEN 'Trimestrielle'::public.group_frequency  THEN interval '90 days'
+        WHEN 'Journalier'    THEN interval '1 day'
+        WHEN 'Hebdomadaire'  THEN interval '7 days'
+        WHEN 'Bimensuelle'   THEN interval '14 days'
+        WHEN 'Mensuelle'     THEN interval '30 days'
+        WHEN 'Trimestrielle' THEN interval '90 days'
         ELSE interval '1 day'
     END;
 $$;

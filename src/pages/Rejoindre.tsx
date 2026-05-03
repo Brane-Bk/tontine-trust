@@ -147,7 +147,9 @@ export default function Rejoindre() {
       await refreshProfile();
       setStep("done");
     } catch (err: any) {
-      toast.error(err.message || "Erreur lors de l'adhésion");
+      console.error("[Rejoindre] Full Error:", err);
+      const details = err.details || err.hint || "";
+      toast.error(err.message + (details ? ` (${details})` : "") || "Erreur lors de l'adhésion");
       setStep("info");
     }
   };
