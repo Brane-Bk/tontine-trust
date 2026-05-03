@@ -70,25 +70,47 @@ export default function GroupeDetail() {
 
   const fetchData = useCallback(async () => {
     if (!id) return;
-    // Automation silencieuse — ne bloque jamais le chargement
-    try { await runTontineAutomation(); } catch (_) {}
-    const [{ data: gRow }, { data: mRows }] = await Promise.all([
-      supabase.from("groups").select("*").eq("id", id).single(),
-      supabase.from("group_members").select("*, profiles(name, initials)").eq("group_id", id).order("turn_order"),
-    ]);
-    if (gRow) setGroup(gRow as Group);
-    const m = (mRows as Member[]) || [];
-    setMembers(m);
-    if (user) {
-      const me = m.find((x) => x.profile_id === user.id);
-      setIsMember(!!me);
-      setIsAdmin(me?.role === "admin");
+    // Automation en arrière-plan
+    runTontineAutomation().catch(() => {});
+    try {
+      const [{ data: gRow }, { data: mRows }] = await Promise.all([
+        supabase.from("groups").select("*").eq("id", id).single(),
+        supabase.from("group_members").select("*, profiles(name, initials)").eq("group_id", id).order("turn_order"),
+      ]);
+      if (gRow) {
+        setGroup(gRow as Group);
+      } else {
+        setGroup(undefined as any); // Marquer comme "non trouvé"
+      }
+      const m = (mRows as Member[]) || [];
+      setMembers(m);
+      if (user) {
+        const me = m.find((x) => x.profile_id === user.id);
+        setIsMember(!!me);
+        setIsAdmin(me?.role === "admin");
+      }
+    } catch (err) {
+      console.error("[GroupeDetail] Fetch error:", err);
+      setGroup(undefined as any);
     }
   }, [id, user]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  if (group === undefined) {
+    return (
+      <div className="flex flex-col min-h-screen items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4 text-2xl">🔍</div>
+        <h2 className="text-lg font-bold mb-1">Groupe non trouvé</h2>
+        <p className="text-sm text-muted-foreground mb-6">Ce groupe n'existe pas ou vous n'y avez pas accès.</p>
+        <button onClick={() => navigate("/home")} className="w-full py-3 rounded-xl font-bold text-white tc-gradient-green">
+          Retour à l'accueil
+        </button>
+      </div>
+    );
+  }
 
   if (!group) {
     return (

@@ -44,7 +44,7 @@ export default function TabBar() {
   const path = location.pathname;
 
   return (
-    <div className="flex items-center justify-around border-t border-border/80 bg-card/95 backdrop-blur-sm px-1 py-1.5 shrink-0">
+    <div className="flex items-center justify-around border-t border-border/80 bg-card/95 backdrop-blur-sm px-1 py-1.5 shrink-0 relative z-50">
       {tabs.map((tab) => {
         const active = tab.match(path);
         const Icon = tab.icon;

@@ -39,7 +39,9 @@ export default function Home() {
     if (!user) return;
     let cancelled = false;
     (async () => {
-      try { await runTontineAutomation(); } catch (_) {}
+      // Automation en arrière-plan pour ne pas bloquer l'affichage initial
+      runTontineAutomation().catch(() => {});
+      
       if (cancelled) return;
       const [{ data: gm }, { count }] = await Promise.all([
         supabase.from("group_members").select("group_id, groups(*)").eq("profile_id", user.id),
