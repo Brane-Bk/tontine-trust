@@ -24,6 +24,7 @@ import Profil from "./pages/Profil";
 import Parametres from "./pages/Parametres";
 import Admin from "./pages/Admin";
 import Portefeuille from "./pages/Portefeuille";
+import TestKkiapay from "./pages/TestKkiapay";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -69,6 +70,7 @@ const App = () => (
                 <Route path="/parametres" element={<ProtectedRoute><Parametres /></ProtectedRoute>} />
                 <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
                 <Route path="/portefeuille" element={<ProtectedRoute><Portefeuille /></ProtectedRoute>} />
+                <Route path="/test-kkiapay" element={<ProtectedRoute><TestKkiapay /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Route>
             </Routes>

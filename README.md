@@ -28,7 +28,7 @@ Thème Sombre : Support complet du mode sombre.
 🔗 Technologie
 Frontend : React + Vite
 Styling : Tailwind CSS + Composants UI (TCAvatar, ProgressBar, etc.)
-Backend : Supabase (Authentification, Base de données)
+Backend : Node.js + Supabase (Authentification, Base de données)
 📊 Architecture des Données
 La base de données Supabase est structurée autour de plusieurs tables principales :
 

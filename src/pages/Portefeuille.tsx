@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import TopBar from "@/components/layout/TopBar";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
-import { initPayment } from "@/lib/talypay";
+import { initPayment } from "@/lib/kkiapay";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { toast } from "sonner";
 import { ArrowDownLeft, ArrowUpRight, Wallet, History, Check, Cpu, ShieldCheck, Lock } from "lucide-react";
@@ -64,7 +64,7 @@ export default function Portefeuille() {
     setStep("processing");
 
     if (type === "deposit") {
-      // Dépôt : on utilise TalyPay (simulé en test)
+      // Dépôt : on utilise Kkiapay (simulé en test)
       const res = await initPayment({
         amount: amt,
         customer_phone: phone,
@@ -90,7 +90,7 @@ export default function Portefeuille() {
         type: "withdrawal",
         name: "Retrait vers Mobile Money",
         amount: -amt,
-        talypay_status: "simulated_success",
+        kkiapay_status: "simulated_success",
         customer_phone: phone,
       });
       await refreshProfile();

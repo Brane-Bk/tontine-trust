@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import TopBar from "@/components/layout/TopBar";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
-import { initPayment, payFromWallet } from "@/lib/talypay";
+import { initPayment, payFromWallet } from "@/lib/kkiapay";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { toast } from "sonner";
 import {
