@@ -89,3 +89,9 @@ migrate_to_kkiapay.sql
 ```
 
 Ce fichier crée les tables nécessaires pour le système de paiement Kkiapay et les transactions.
+
+6.Installer le package de kkiapay
+
+```bash
+npm install kkiapay-react
+```
