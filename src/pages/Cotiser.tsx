@@ -4,10 +4,11 @@ import TopBar from "@/components/layout/TopBar";
 import { Check, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
-import { initPayment, payFromWallet, TalyPayResponse } from "@/lib/talypay";
+import { payFromWallet, KkiapayResponse } from "@/lib/kkiapay";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { toast } from "sonner";
 import { runTontineAutomation } from "@/lib/tontineAutomation";
+import KkiapayWidget from "@/components/ui/KkiapayWidget";
 
 const OPERATORS = [
   { id: "mtn", name: "MTN MoMo", shortName: "MTN", color: "#FFA500", textColor: "#fff" },
@@ -32,20 +33,68 @@ export default function Cotiser() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [step, setStep] = useState<PayStep>("form");
-  const [payResult, setPayResult] = useState<TalyPayResponse | null>(null);
+  const [payResult, setPayResult] = useState<KkiapayResponse | null>(null);
+  const [showKkiapayWidget, setShowKkiapayWidget] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
+    console.log("Cotiser useEffect triggered, user:", user);
+    
+    if (!user) {
+      console.log("No user found, returning");
+      return;
+    }
+    
+    console.log("Loading groups for user:", user.id);
+    
+    // D'abord vérifier les memberships
     supabase
       .from("group_members")
-      .select("group_id, groups(id, name, contribution_amount, status)")
+      .select("*")
       .eq("profile_id", user.id)
-      .then(({ data }) => {
-        const grps = (data || [])
-          .map((d: any) => d.groups)
-          .filter((g: any) => g && g.status === "active");
-        setGroups(grps);
-        if (grps.length > 0) setSelectedGroup(grps[0]);
+      .then(({ data: members, error }) => {
+        console.log("Supabase response - members:", members, "error:", error);
+        
+        if (error) {
+          console.error("Error fetching memberships:", error);
+          setGroups([]);
+          return;
+        }
+        
+        if (!members || members.length === 0) {
+          console.log("No memberships found");
+          setGroups([]);
+          return;
+        }
+        
+        // Ensuite charger les détails des groupes
+        const groupIds = members.map(m => m.group_id);
+        console.log("Group IDs to fetch:", groupIds);
+        
+        return supabase
+          .from("groups")
+          .select("*")
+          .in("id", groupIds)
+          .eq("status", "active");
+      })
+      .then(({ data: groups, error }) => {
+        console.log("Supabase response - groups:", groups, "error:", error);
+        
+        if (error) {
+          console.error("Error fetching groups:", error);
+          setGroups([]);
+          return;
+        }
+        
+        console.log("Active groups:", groups);
+        setGroups(groups || []);
+        if (groups && groups.length > 0) {
+          console.log("Setting selected group to first group:", groups[0]);
+          setSelectedGroup(groups[0]);
+        }
+      })
+      .catch(error => {
+        console.error("Unexpected error loading groups:", error);
+        setGroups([]);
       });
   }, [user]);
 
@@ -55,47 +104,66 @@ export default function Cotiser() {
   const total = (selectedGroup?.contribution_amount || 0) + fees;
 
   const handleConfirm = async () => {
+    console.log("🔥 handleConfirm appelé");
+    console.log("🔥 operator:", operator);
+    console.log("🔥 user:", user);
+    console.log("🔥 selectedGroup:", selectedGroup);
+    console.log("🔥 phone:", phone);
+    
     const needPhone = operator !== "wallet";
     const digits = phone.replace(/\D/g, "");
+    
     if (!user || !selectedGroup) {
+      console.log("❌ Pas d'utilisateur ou de groupe");
       toast.error("Sélectionnez un groupe");
       return;
     }
     if (needPhone && digits.length < 8) {
+      console.log("❌ Numéro invalide:", digits.length);
       toast.error("Numéro de téléphone invalide");
       return;
     }
-    setStep("processing");
 
-    if (needPhone && phone !== profile?.phone) {
-      await supabase.from("profiles").update({ phone }).eq("id", user.id);
-    }
-
-    let result: TalyPayResponse;
     if (operator === "wallet") {
-      result = await payFromWallet({
+      console.log("💳 Paiement portefeuille");
+      setStep("processing");
+      const result = await payFromWallet({
         amount: total,
         profile_id: user.id,
         group_id: selectedGroup.id,
         transaction_type: "contribution",
         transaction_name: `Cotisation — ${selectedGroup.name}`,
       });
-    } else {
-      result = await initPayment({
-        amount: total,
-        currency: "XOF",
-        customer_phone: phone,
-        profile_id: user.id,
-        group_id: selectedGroup.id,
-        transaction_type: "contribution",
-        transaction_name: `Cotisation — ${selectedGroup.name}`,
-        operator: operator,
-      });
-    }
 
+      setPayResult(result);
+      if (result.success) {
+        await supabase
+          .from("group_members")
+          .update({ status: "paid", paid_date: new Date().toISOString() })
+          .eq("group_id", selectedGroup.id)
+          .eq("profile_id", user.id);
+
+        await runTontineAutomation();
+        setStep("done");
+      } else {
+        setStep("error");
+      }
+    } else {
+      console.log("📱 Paiement mobile money - ouverture directe du widget");
+      console.log("📯 Début du processus:", { step: "processing", showKkiapayWidget: true });
+      // Afficher le spinner puis ouvrir le widget Kkiapay
+      setStep("processing");
+      setShowKkiapayWidget(true);
+      console.log("📯 setShowKkiapayWidget appelé");
+    }
+  };
+
+  
+  const handleKkiapaySuccess = async (result: KkiapayResponse) => {
     setPayResult(result);
+    setShowKkiapayWidget(false);
+    
     if (result.success) {
-      // Mettre à jour le statut du membre à "paid"
       await supabase
         .from("group_members")
         .update({ status: "paid", paid_date: new Date().toISOString() })
@@ -103,11 +171,15 @@ export default function Cotiser() {
         .eq("profile_id", user.id);
 
       await runTontineAutomation();
-      await refreshProfile();
       setStep("done");
     } else {
       setStep("error");
     }
+  };
+
+  const handleKkiapayError = () => {
+    setShowKkiapayWidget(false);
+    setStep("error");
   };
 
   // ─── ÉTAPE 1 : Formulaire ────────────────────────────────────────────────
@@ -289,6 +361,38 @@ export default function Cotiser() {
 
   // ─── ÉTAPE 3 : Traitement en cours ───────────────────────────────────────
   if (step === "processing") {
+    // Vérifier si le widget Kkiapay doit être affiché
+    console.log("🎯 Vérification condition widget en processing:", { 
+      showKkiapayWidget, 
+      selectedGroup: !!selectedGroup, 
+      user: !!user,
+      total,
+      phone
+    });
+    if (showKkiapayWidget && selectedGroup && user) {
+      console.log("🎯 Affichage du bouton Kkiapay");
+      return (
+        <div className="flex flex-col min-h-screen items-center justify-center gap-5 animate-fade-in">
+          <div className="text-center">
+            <KkiapayWidget
+              amount={total}
+              phone={phone}
+              email={user.email || ""}
+              onSuccess={handleKkiapaySuccess}
+              onError={handleKkiapayError}
+              onClose={() => setShowKkiapayWidget(false)}
+            />
+            <button 
+              onClick={() => setShowKkiapayWidget(false)}
+              className="mt-4 text-gray-500 hover:text-gray-700"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="flex flex-col min-h-screen items-center justify-center gap-5 animate-fade-in">
         <div className="relative">
@@ -298,7 +402,7 @@ export default function Cotiser() {
         </div>
         <div className="text-center">
           <p className="text-base font-bold mb-1">Traitement en cours...</p>
-          <p className="text-xs text-muted-foreground">Connexion à TalyPay</p>
+          <p className="text-xs text-muted-foreground">Connexion à Kkiapay</p>
         </div>
         <div className="flex gap-1.5 mt-2">
           {[0, 1, 2].map((i) => (
@@ -350,7 +454,7 @@ export default function Cotiser() {
               </div>
             ))}
             <div className="border-t border-border pt-2 mt-2">
-              <p className="text-[10px] text-muted-foreground mb-0.5">Référence TalyPay</p>
+              <p className="text-[10px] text-muted-foreground mb-0.5">Référence Kkiapay</p>
               <p className="text-[11px] font-mono text-[hsl(var(--tc-purple))] break-all">
                 {payResult.reference || "—"}
               </p>
@@ -390,9 +494,44 @@ export default function Cotiser() {
           <button onClick={() => setStep("form")} className="w-full py-3 rounded-xl text-sm font-semibold text-white tc-gradient-green tc-shadow-green mb-3">
             Réessayer
           </button>
-          <button onClick={() => navigate("/home")} className="text-xs text-muted-foreground">Annuler</button>
+          <button onClick={() => navigate("/home")} className="text-xs text-muted-foreground mb-2">Annuler</button>
+          
+          {/* Bouton de test Kkiapay direct */}
+          <button 
+            onClick={() => {
+              console.log('Test direct Kkiapay depuis Cotiser');
+              if (window.kkiapay) {
+                window.kkiapay({
+                  amount: 1,
+                  key: import.meta.env.VITE_KKIAPAY_PUBLIC_KEY || '9fa8afd0653111efbf02478c5adba4b8',
+                  sandbox: import.meta.env.VITE_KKIAPAY_SANDBOX === "true",
+                });
+              } else {
+                console.error('Kkiapay non disponible');
+              }
+            }}
+            className="w-full py-2 rounded-xl text-xs font-semibold text-blue-600 border border-blue-600 bg-blue-50 mb-2"
+          >
+            🧪 Test Direct Kkiapay
+          </button>
         </div>
       </div>
+    );
+  }
+
+  // Widget Kkiapay
+  console.log("🎯 Vérification condition widget:", { showKkiapayWidget, selectedGroup: !!selectedGroup, user: !!user });
+  if (showKkiapayWidget && selectedGroup && user) {
+    console.log("🎯 Rendu du KkiapayWidget");
+    return (
+      <KkiapayWidget
+        amount={total}
+        phone={phone}
+        email={user.email || ""}
+        onSuccess={handleKkiapaySuccess}
+        onError={handleKkiapayError}
+        onClose={() => setShowKkiapayWidget(false)}
+      />
     );
   }
 

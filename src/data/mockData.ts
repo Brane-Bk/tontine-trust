@@ -1,4 +1,4 @@
-export interface TontineGroup {
+vsexport interface TontineGroup {
   id: string;
   name: string;
   initials: string;
