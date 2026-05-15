@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { initPayment, payFromWallet } from "@/lib/kkiapay";
 import PhoneInput from "@/components/ui/PhoneInput";
+import InsuranceModal from "@/components/ui/InsuranceModal";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -53,7 +54,8 @@ export default function Rejoindre() {
   const [step, setStep] = useState<"info" | "guarantee" | "processing" | "done">("info");
   const [alreadyMember, setAlreadyMember] = useState(false);
   const [guaranteeProof, setGuaranteeProof] = useState("");
-  const [commitmentAccepted, setCommitmentAccepted] = useState(false);
+const [commitmentAccepted, setCommitmentAccepted] = useState(false);
+  const [showInsuranceModal, setShowInsuranceModal] = useState(false);
   const joinConvexGroup = useMutation(api.tontines.joinGroup);
   const convexDetail = useQuery(
     api.tontines.getGroupDetail,
@@ -438,13 +440,20 @@ export default function Rejoindre() {
               <div className="w-9 h-9 rounded-2xl bg-[hsla(38,92%,50%,0.18)] flex items-center justify-center text-[hsl(var(--tc-amber))]">
                 <Lock className="w-4 h-4" />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-semibold text-foreground">Garantie bancaire obligatoire</p>
                 <p className="text-[10px] text-muted-foreground leading-relaxed mt-2">
-                  Ce groupe valide l’adhésion uniquement via un compte bancaire partenaire. La banque paie le lendemain pour les retards et le cycle continue jusqu'à ce que chaque membre ait reçu son argent.
+                  Ce groupe valide l'adhésion uniquement via un compte bancaire partenaire. La banque paie le lendemain pour les retards et le cycle continue jusqu'à ce que chaque membre ait reçu son argent.
                 </p>
               </div>
             </div>
+            <button
+              onClick={() => setShowInsuranceModal(true)}
+              className="mt-3 w-full py-2 rounded-xl border border-[hsla(38,92%,50%,0.3)] bg-[hsla(38,92%,50%,0.08)] text-[11px] font-medium text-[hsl(var(--tc-amber))] hover:bg-[hsla(38,92%,50%,0.12)] transition-colors flex items-center justify-center gap-1"
+            >
+              <Shield className="w-3.5 h-3.5" />
+              Voir les détails de l'assurance
+            </button>
           </div>
         )}
 
@@ -484,6 +493,11 @@ export default function Rejoindre() {
           </p>
         )}
       </div>
+
+      <InsuranceModal 
+        open={showInsuranceModal} 
+        onOpenChange={setShowInsuranceModal} 
+      />
     </div>
   );
 }
