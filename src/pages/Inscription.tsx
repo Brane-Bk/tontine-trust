@@ -17,21 +17,25 @@ export default function Inscription() {
   const [memoDemo, setMemoDemo] = useState(true);
 
   const handleSignUp = async () => {
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedName = name.trim();
+    const normalizedPhone = phone.trim();
+
     if (!isSupabaseConfigured) {
       toast.error("Configuration Supabase manquante. Ajoutez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans .env.");
       return;
     }
-    if (!email || !name || !phone || password.length < 6) {
+    if (!normalizedEmail || !normalizedName || !normalizedPhone || password.length < 6) {
       toast.error("Veuillez remplir tous les champs et entrer un mot de passe d'au moins 6 caractères");
       return;
     }
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: normalizedEmail,
         password,
         options: {
-          data: { name, phone }
+          data: { name: normalizedName, phone: normalizedPhone }
         }
       });
       
@@ -47,7 +51,7 @@ export default function Inscription() {
       // Confirmation email désactivée dans Supabase → session immédiate
       if (data.session) {
         if (memoDemo) {
-          saveDemoAccount(email, password, name);
+          saveDemoAccount(normalizedEmail, password, normalizedName);
         }
         toast.success("Compte créé ! Bienvenue.");
         navigate("/home", { replace: true });
@@ -56,8 +60,13 @@ export default function Inscription() {
 
       setIsSuccess(true);
       toast.success("Vérifiez vos emails pour confirmer votre compte !");
-    } catch (error: any) {
-      toast.error(error.message || "Erreur lors de la création du compte");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Erreur lors de la création du compte";
+      if (message.toLowerCase().includes("already registered")) {
+        toast.error("Ce compte existe déjà. Connectez-vous ou supprimez l'utilisateur dans Supabase Auth > Users.");
+      } else {
+        toast.error(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -98,7 +107,7 @@ export default function Inscription() {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value.trim().toLowerCase())}
                 placeholder="ama.kossou@email.com"
                 className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-card text-sm outline-none focus:border-[hsl(var(--tc-green))] transition-colors"
               />

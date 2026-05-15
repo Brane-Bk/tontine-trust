@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { ConvexSupabaseProvider } from "@/components/providers/ConvexSupabaseProvider";
+import { ConvexUserSync } from "@/components/providers/ConvexUserSync";
 import AppLayout from "@/components/layout/AppLayout";
 
 import Splash from "./pages/Splash";
@@ -47,35 +49,38 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route element={<AppLayout />}>
-                <Route path="/" element={<Splash />} />
-                <Route path="/connexion" element={<GuestRoute><Connexion /></GuestRoute>} />
-                <Route path="/inscription" element={<GuestRoute><Inscription /></GuestRoute>} />
-                <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-                <Route path="/rechercher" element={<ProtectedRoute><Rechercher /></ProtectedRoute>} />
-                <Route path="/rejoindre/:id" element={<ProtectedRoute><Rejoindre /></ProtectedRoute>} />
-                <Route path="/groupe/:id" element={<ProtectedRoute><GroupeDetail /></ProtectedRoute>} />
-                <Route path="/creer" element={<ProtectedRoute><CreerGroupe /></ProtectedRoute>} />
-                <Route path="/cotiser" element={<ProtectedRoute><Cotiser /></ProtectedRoute>} />
-                <Route path="/confirmation" element={<ProtectedRoute><Confirmation /></ProtectedRoute>} />
-                <Route path="/score" element={<ProtectedRoute><Score /></ProtectedRoute>} />
-                <Route path="/historique" element={<ProtectedRoute><Historique /></ProtectedRoute>} />
-                <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-                <Route path="/profil" element={<ProtectedRoute><Profil /></ProtectedRoute>} />
-                <Route path="/parametres" element={<ProtectedRoute><Parametres /></ProtectedRoute>} />
-                <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
-                <Route path="/portefeuille" element={<ProtectedRoute><Portefeuille /></ProtectedRoute>} />
-                <Route path="/test-kkiapay" element={<ProtectedRoute><TestKkiapay /></ProtectedRoute>} />
-                <Route path="*" element={<NotFound />} />
-              </Route>
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
+        <ConvexSupabaseProvider>
+          <TooltipProvider>
+            <ConvexUserSync />
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route element={<AppLayout />}>
+                  <Route path="/" element={<Splash />} />
+                  <Route path="/connexion" element={<GuestRoute><Connexion /></GuestRoute>} />
+                  <Route path="/inscription" element={<GuestRoute><Inscription /></GuestRoute>} />
+                  <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+                  <Route path="/rechercher" element={<ProtectedRoute><Rechercher /></ProtectedRoute>} />
+                  <Route path="/rejoindre/:id" element={<ProtectedRoute><Rejoindre /></ProtectedRoute>} />
+                  <Route path="/groupe/:id" element={<ProtectedRoute><GroupeDetail /></ProtectedRoute>} />
+                  <Route path="/creer" element={<ProtectedRoute><CreerGroupe /></ProtectedRoute>} />
+                  <Route path="/cotiser" element={<ProtectedRoute><Cotiser /></ProtectedRoute>} />
+                  <Route path="/confirmation" element={<ProtectedRoute><Confirmation /></ProtectedRoute>} />
+                  <Route path="/score" element={<ProtectedRoute><Score /></ProtectedRoute>} />
+                  <Route path="/historique" element={<ProtectedRoute><Historique /></ProtectedRoute>} />
+                  <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+                  <Route path="/profil" element={<ProtectedRoute><Profil /></ProtectedRoute>} />
+                  <Route path="/parametres" element={<ProtectedRoute><Parametres /></ProtectedRoute>} />
+                  <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+                  <Route path="/portefeuille" element={<ProtectedRoute><Portefeuille /></ProtectedRoute>} />
+                  <Route path="/test-kkiapay" element={<ProtectedRoute><TestKkiapay /></ProtectedRoute>} />
+                  <Route path="*" element={<NotFound />} />
+                </Route>
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </ConvexSupabaseProvider>
       </AuthProvider>
     </ThemeProvider>
   </QueryClientProvider>

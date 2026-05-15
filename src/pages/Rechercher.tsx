@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 import TopBar from "@/components/layout/TopBar";
 import TCAvatar from "@/components/ui/tc-avatar";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { isConvexConfigured } from "@/lib/convex";
 
 interface Group {
   id: string;
@@ -33,8 +36,43 @@ export default function Rechercher() {
   const [loading, setLoading] = useState(true);
   const [myGroupIds, setMyGroupIds] = useState<string[]>([]);
 
+  const convexOpenGroups = useQuery(
+    api.tontines.listOpenGroups,
+    isConvexConfigured && user ? {} : "skip"
+  );
+  const convexMyGroups = useQuery(
+    api.tontines.listMyGroups,
+    isConvexConfigured && user ? {} : "skip"
+  );
+
   useEffect(() => {
-    // Charger tous les groupes disponibles (non complets)
+    if (!isConvexConfigured) return;
+    if (convexOpenGroups) {
+      setGroups(
+        convexOpenGroups.map((g) => ({
+          id: g.id,
+          name: g.name,
+          initials: g.initials,
+          color: g.color as Group["color"],
+          contribution_amount: g.contributionAmount,
+          frequency: g.frequency,
+          members_count: g.membersCount,
+          max_members: g.maxMembers,
+          min_score: g.minScore,
+          status: "pending",
+          guarantee_deposit: 0,
+          penalty_rate: g.penaltyRate,
+        }))
+      );
+      setLoading(false);
+    }
+    if (convexMyGroups) {
+      setMyGroupIds(convexMyGroups.map((g) => g.id));
+    }
+  }, [convexMyGroups, convexOpenGroups]);
+
+  useEffect(() => {
+    if (isConvexConfigured) return;
     supabase
       .from("groups")
       .select("*")
@@ -45,20 +83,25 @@ export default function Rechercher() {
         setLoading(false);
       });
 
-    // Charger les groupes déjà rejoints par l'utilisateur
     if (user) {
       supabase
         .from("group_members")
         .select("group_id")
         .eq("profile_id", user.id)
         .then(({ data }) => {
-          setMyGroupIds((data || []).map((d: any) => d.group_id));
+          setMyGroupIds(
+            ((data ?? []) as Array<{ group_id: string }>).map((d) => d.group_id)
+          );
         });
     }
   }, [user]);
 
-  const filtered = groups.filter((g) =>
-    g.name.toLowerCase().includes(search.toLowerCase())
+  const filtered = useMemo(
+    () =>
+      groups.filter((g) =>
+        g.name.toLowerCase().includes(search.toLowerCase())
+      ),
+    [groups, search]
   );
 
   const getGroupStatus = (g: Group) => {
@@ -159,7 +202,6 @@ export default function Rechercher() {
                   </div>
                 </div>
 
-                {/* Infos supplémentaires */}
                 <div className="flex gap-3 text-[10px] text-muted-foreground">
                   {g.penalty_rate > 0 && <span>Pénalité {g.penalty_rate}%</span>}
                   <span>Garantie bancaire</span>

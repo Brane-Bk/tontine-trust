@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TopBar from "@/components/layout/TopBar";
 import { useAuth } from "@/hooks/useAuth";
@@ -7,6 +7,19 @@ import { initPayment } from "@/lib/kkiapay";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { toast } from "sonner";
 import { ArrowDownLeft, ArrowUpRight, Wallet, History, Check, Cpu, ShieldCheck, Lock } from "lucide-react";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { isConvexConfigured } from "@/lib/convex";
+
+interface WalletTransaction {
+  id: string;
+  name: string;
+  amount: number;
+  type: string;
+  kkiapay_status?: string;
+  provider?: string;
+  created_at: string;
+}
 
 export default function Portefeuille() {
   const navigate = useNavigate();
@@ -17,10 +30,13 @@ export default function Portefeuille() {
   const [phone, setPhone] = useState(profile?.phone || "");
   const [operator, setOperator] = useState("MTN");
   const [step, setStep] = useState<"form" | "processing" | "success">("form");
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [hasLate, setHasLate] = useState(false); // cotisations en retard
+  const convexWallet = useQuery(api.payments.walletAndTransactions, isConvexConfigured && user ? {} : "skip");
+  const createConvexDeposit = useMutation(api.payments.createWalletDeposit);
+  const requestConvexWithdrawal = useMutation(api.payments.requestWithdrawal);
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase
       .from("transactions")
@@ -29,10 +45,26 @@ export default function Portefeuille() {
       .order("created_at", { ascending: false })
       .limit(10);
     if (data) setTransactions(data);
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (convexWallet) {
+      setTransactions(convexWallet.transactions.map((tx) => ({
+        id: tx.id,
+        name: tx.name,
+        amount: tx.amount,
+        type: tx.type,
+        kkiapay_status: tx.status,
+        provider: tx.provider,
+        created_at: new Date(tx.createdAt).toISOString(),
+      })));
+      setHasLate(convexWallet.hasLate);
+    }
+  }, [convexWallet]);
 
   useEffect(() => {
     if (profile?.phone) setPhone(profile.phone);
+    if (isConvexConfigured) return;
     fetchTransactions();
     // Check for late contributions
     if (user) {
@@ -44,7 +76,7 @@ export default function Portefeuille() {
         .limit(1)
         .then(({ data }) => setHasLate((data?.length ?? 0) > 0));
     }
-  }, [profile, user]);
+  }, [fetchTransactions, profile, user]);
 
   const handleTransaction = async (type: "deposit" | "withdrawal") => {
     const amt = parseInt(amount);
@@ -62,6 +94,33 @@ export default function Portefeuille() {
     }
 
     setStep("processing");
+
+    if (isConvexConfigured) {
+      try {
+        if (type === "deposit") {
+          const result = await createConvexDeposit({
+            amount: amt,
+            customerPhone: phone,
+            operator,
+          });
+          toast.success(
+            result.settledInDemoMode
+              ? "Dépôt crédité en mode démo."
+              : "Demande de dépôt envoyée. Vérification Kkiapay en cours."
+          );
+        } else {
+          await requestConvexWithdrawal({
+            amount: amt,
+            customerPhone: phone,
+          });
+        }
+        setStep("success");
+      } catch (error: unknown) {
+        toast.error(error instanceof Error ? error.message : "Opération impossible");
+        setStep("form");
+      }
+      return;
+    }
 
     if (type === "deposit") {
       // Dépôt : on utilise Kkiapay (simulé en test)
@@ -163,7 +222,7 @@ export default function Portefeuille() {
               <Wallet className="w-3.5 h-3.5" />
             </div>
             <p className="text-3xl font-bold tabular-nums leading-tight">
-              {new Intl.NumberFormat("fr-FR").format(Number(profile?.wallet_balance ?? 0))}
+              {new Intl.NumberFormat("fr-FR").format(Number(convexWallet?.walletBalance ?? profile?.wallet_balance ?? 0))}
             </p>
             <p className="text-xs text-white/60 mt-1">FCFA</p>
           </div>

@@ -9,6 +9,9 @@ import PhoneInput from "@/components/ui/PhoneInput";
 import { toast } from "sonner";
 import { runTontineAutomation } from "@/lib/tontineAutomation";
 import KkiapayWidget from "@/components/ui/KkiapayWidget";
+import { useAction, useMutation, useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { isConvexConfigured } from "@/lib/convex";
 
 const OPERATORS = [
   { id: "mtn", name: "MTN MoMo", shortName: "MTN", color: "#FFA500", textColor: "#fff" },
@@ -35,8 +38,31 @@ export default function Cotiser() {
   const [step, setStep] = useState<PayStep>("form");
   const [payResult, setPayResult] = useState<KkiapayResponse | null>(null);
   const [showKkiapayWidget, setShowKkiapayWidget] = useState(false);
+  const convexGroups = useQuery(api.tontines.listMyGroups, isConvexConfigured && user ? {} : "skip");
+  const currentRound = useQuery(
+    api.tontines.currentRoundForGroup,
+    isConvexConfigured && selectedGroup && !selectedGroup.id.includes("-") ? { groupId: selectedGroup.id } : "skip"
+  );
+  const payConvexWallet = useMutation(api.payments.payContributionFromWallet);
+  const createConvexRequest = useMutation(api.payments.createContributionRequest);
+  const verifyConvexPayment = useAction(api.paymentActions.verifyKkiapayAndSettle);
 
   useEffect(() => {
+    if (convexGroups) {
+      const activeGroups = convexGroups
+        .filter((group) => group.status === "active")
+        .map((group) => ({
+          id: group.id,
+          name: group.name,
+          contribution_amount: group.contributionAmount,
+        }));
+      setGroups(activeGroups);
+      if (!selectedGroup && activeGroups.length > 0) {
+        setSelectedGroup(activeGroups[0]);
+      }
+      return;
+    }
+    if (isConvexConfigured) return;
     console.log("Cotiser useEffect triggered, user:", user);
     
     if (!user) {
@@ -96,7 +122,7 @@ export default function Cotiser() {
         console.error("Unexpected error loading groups:", error);
         setGroups([]);
       });
-  }, [user]);
+  }, [convexGroups, selectedGroup, user]);
 
   useEffect(() => { if (profile?.phone) setPhone(profile.phone); }, [profile]);
 
@@ -127,6 +153,30 @@ export default function Cotiser() {
     if (operator === "wallet") {
       console.log("💳 Paiement portefeuille");
       setStep("processing");
+      if (isConvexConfigured && selectedGroup.id && !selectedGroup.id.includes("-")) {
+        if (!currentRound) {
+          toast.error("Aucun tour actif pour ce groupe.");
+          setStep("form");
+          return;
+        }
+        try {
+          await payConvexWallet({
+            groupId: selectedGroup.id,
+            roundId: currentRound.roundId,
+          });
+          setPayResult({
+            success: true,
+            transactionId: `WT-${Date.now().toString(36).toUpperCase()}`,
+            status: "wallet_transfer",
+            message: "Paiement via portefeuille réussi.",
+          });
+          setStep("done");
+        } catch (error: unknown) {
+          toast.error(error instanceof Error ? error.message : "Échec du paiement portefeuille");
+          setStep("error");
+        }
+        return;
+      }
       const result = await payFromWallet({
         amount: total,
         profile_id: user.id,
@@ -149,6 +199,37 @@ export default function Cotiser() {
         setStep("error");
       }
     } else {
+      if (isConvexConfigured && selectedGroup.id && !selectedGroup.id.includes("-")) {
+        if (!currentRound) {
+          toast.error("Aucun tour actif pour ce groupe.");
+          return;
+        }
+        setStep("processing");
+        try {
+          const paymentRequestId = await createConvexRequest({
+            groupId: selectedGroup.id,
+            roundId: currentRound.roundId,
+            amount: selectedGroup.contribution_amount,
+            customerPhone: digits,
+            operator,
+          });
+          const result = await verifyConvexPayment({
+            paymentRequestId,
+            transactionId: `KK-DEMO-${Date.now().toString(36).toUpperCase()}`,
+          });
+          setPayResult({
+            success: result.success,
+            transactionId: result.providerReference,
+            status: result.status,
+            message: result.success ? "Cotisation validée côté serveur Convex." : "Paiement refusé.",
+          });
+          setStep(result.success ? "done" : "error");
+        } catch (error: unknown) {
+          toast.error(error instanceof Error ? error.message : "Échec de la vérification du paiement");
+          setStep("error");
+        }
+        return;
+      }
       console.log("📱 Paiement mobile money - ouverture directe du widget");
       console.log("📯 Début du processus:", { step: "processing", showKkiapayWidget: true });
       // Afficher le spinner puis ouvrir le widget Kkiapay

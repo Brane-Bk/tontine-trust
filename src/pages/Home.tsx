@@ -6,6 +6,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { runTontineAutomation } from "@/lib/tontineAutomation";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { isConvexConfigured } from "@/lib/convex";
 
 interface Group {
   id: string;
@@ -34,8 +37,26 @@ export default function Home() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [hasLate, setHasLate] = useState(false);
+  const convexGroups = useQuery(api.tontines.listMyGroups, isConvexConfigured && user ? {} : "skip");
 
   useEffect(() => {
+    if (convexGroups) {
+      setGroups(convexGroups.map((group) => ({
+        id: group.id,
+        name: group.name,
+        initials: group.initials,
+        color: group.color,
+        contribution_amount: group.contributionAmount,
+        current_round: group.currentRound,
+        total_rounds: group.totalRounds,
+        total_pool: group.totalPool,
+        status: group.status,
+      })));
+    }
+  }, [convexGroups]);
+
+  useEffect(() => {
+    if (isConvexConfigured) return;
     if (!user) return;
     let cancelled = false;
     (async () => {

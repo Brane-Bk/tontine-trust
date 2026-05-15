@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import TopBar from "@/components/layout/TopBar";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { isConvexConfigured } from "@/lib/convex";
 
 interface Notification {
   id: string;
@@ -20,14 +23,39 @@ const dotColors: Record<string, string> = {
   amber: "bg-[hsl(var(--tc-amber))]",
   red: "bg-[hsl(var(--tc-red))]",
   blue: "bg-[hsl(var(--tc-blue))]",
+  purple: "bg-[hsl(var(--tc-purple))]",
+  orange: "bg-[hsl(var(--tc-amber))]",
 };
 
 export default function Notifications() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const convexNotifications = useQuery(
+    api.notifications.listMine,
+    isConvexConfigured && user ? {} : "skip"
+  );
+  const markNotificationRead = useMutation(api.notifications.markRead);
 
   useEffect(() => {
+    if (!isConvexConfigured) return;
+    if (!convexNotifications) return;
+    setNotifications(
+      convexNotifications.map((n) => ({
+        id: n.id,
+        type: n.type,
+        title: n.title,
+        message: n.message,
+        is_read: n.read,
+        color: n.color,
+        navigate_to: n.navigateTo ?? "",
+        created_at: new Date(n.createdAt).toISOString(),
+      }))
+    );
+  }, [convexNotifications]);
+
+  useEffect(() => {
+    if (isConvexConfigured) return;
     if (!user) return;
     supabase
       .from("notifications")
@@ -38,16 +66,31 @@ export default function Notifications() {
   }, [user]);
 
   const handleClick = async (n: Notification) => {
-    // Mark as read
     if (!n.is_read) {
-      await supabase.from("notifications").update({ is_read: true }).eq("id", n.id);
-      setNotifications((prev) => prev.map((x) => x.id === n.id ? { ...x, is_read: true } : x));
+      try {
+        if (isConvexConfigured) {
+          await markNotificationRead({ notificationId: n.id as never });
+        } else {
+          await supabase.from("notifications").update({ is_read: true }).eq("id", n.id);
+        }
+      } catch {
+        // silent
+      }
+      setNotifications((prev) =>
+        prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x))
+      );
     }
-    navigate(n.navigate_to);
+    if (n.navigate_to) navigate(n.navigate_to);
   };
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
-  const formatTime = (d: string) => new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  const formatTime = (d: string) =>
+    new Date(d).toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
   return (
     <div className="animate-fade-in">
@@ -78,12 +121,18 @@ export default function Notifications() {
                 !n.is_read ? "bg-accent/30" : ""
               }`}
             >
-              <div className={`w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 ${dotColors[n.color] || dotColors.blue}`} />
+              <div
+                className={`w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 ${
+                  dotColors[n.color] || dotColors.blue
+                }`}
+              />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold mb-0.5">{n.title}</p>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">{n.message}</p>
               </div>
-              <span className="text-[10px] text-muted-foreground shrink-0">{formatTime(n.created_at)}</span>
+              <span className="text-[10px] text-muted-foreground shrink-0">
+                {formatTime(n.created_at)}
+              </span>
             </button>
           ))
         )}

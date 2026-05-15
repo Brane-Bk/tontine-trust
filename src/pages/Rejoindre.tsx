@@ -7,6 +7,9 @@ import { initPayment, payFromWallet } from "@/lib/kkiapay";
 import PhoneInput from "@/components/ui/PhoneInput";
 import InsuranceModal from "@/components/ui/InsuranceModal";
 import { toast } from "sonner";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { isConvexConfigured } from "@/lib/convex";
 import {
   Loader2, Check, Users, Shield, Info, Lock,
   Coins, AlertTriangle, Calendar, ChevronRight
@@ -51,13 +54,40 @@ export default function Rejoindre() {
   const [step, setStep] = useState<"info" | "guarantee" | "processing" | "done">("info");
   const [alreadyMember, setAlreadyMember] = useState(false);
   const [guaranteeProof, setGuaranteeProof] = useState("");
+const [commitmentAccepted, setCommitmentAccepted] = useState(false);
   const [showInsuranceModal, setShowInsuranceModal] = useState(false);
+  const joinConvexGroup = useMutation(api.tontines.joinGroup);
+  const convexDetail = useQuery(
+    api.tontines.getGroupDetail,
+    isConvexConfigured && id && !id.includes("-") ? { groupId: id } : "skip"
+  );
 
   useEffect(() => {
     if (!id) return;
+    if (isConvexConfigured && !id.includes("-")) return;
     supabase.from("groups").select("*").eq("id", id).single()
       .then(({ data }) => setGroup(data as Group));
   }, [id]);
+
+  useEffect(() => {
+    if (!convexDetail) return;
+    setGroup({
+      id: convexDetail.group.id,
+      name: convexDetail.group.name,
+      initials: convexDetail.group.initials,
+      contribution_amount: convexDetail.group.contributionAmount,
+      frequency: convexDetail.group.frequency as Frequency,
+      members_count: convexDetail.group.membersCount,
+      max_members: convexDetail.group.maxMembers,
+      penalty_rate: convexDetail.group.penaltyRate,
+      guarantee_deposit: 0,
+      min_score: 0,
+      status: convexDetail.group.status as Group["status"],
+      total_rounds: convexDetail.group.totalRounds,
+      order_type: "random",
+    });
+    setAlreadyMember(convexDetail.isMember);
+  }, [convexDetail]);
 
   useEffect(() => {
     if (profile?.phone) setPhone(profile.phone);
@@ -149,10 +179,11 @@ export default function Rejoindre() {
 
       await refreshProfile();
       setStep("done");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[Rejoindre] Full Error:", err);
-      const details = err.details || err.hint || "";
-      toast.error(err.message + (details ? ` (${details})` : "") || "Erreur lors de l'adhésion");
+      const maybeError = err as { message?: string; details?: string; hint?: string };
+      const details = maybeError.details || maybeError.hint || "";
+      toast.error((maybeError.message || "Erreur lors de l'adhésion") + (details ? ` (${details})` : ""));
       setStep("info");
     }
   };
@@ -165,6 +196,23 @@ export default function Rejoindre() {
       if (!guaranteeProof.trim()) {
         toast.error("Veuillez fournir le numéro de compte bancaire partenaire.");
         setStep("guarantee");
+        return;
+      }
+      if (!commitmentAccepted) {
+        toast.error("Veuillez accepter la reconnaissance d'engagement tontinier.");
+        setStep("guarantee");
+        return;
+      }
+
+      if (isConvexConfigured && group.id && !group.id.includes("-")) {
+        await joinConvexGroup({
+          groupId: group.id,
+          coverageType: "bank",
+          coverageReference: guaranteeProof.trim(),
+          commitmentAccepted,
+        });
+        await refreshProfile();
+        setStep("done");
         return;
       }
 
@@ -191,8 +239,8 @@ export default function Rejoindre() {
 
       await refreshProfile();
       setStep("done");
-    } catch (err: any) {
-      toast.error(err.message || "Erreur lors de la soumission de la garantie");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Erreur lors de la soumission de la garantie");
       setStep("info");
     }
   };
@@ -233,10 +281,24 @@ export default function Rejoindre() {
             </p>
           </div>
 
+          <label className="mb-5 flex items-start gap-3 rounded-3xl border border-[hsla(160,84%,39%,0.18)] bg-[hsla(160,84%,39%,0.06)] p-3">
+            <input
+              type="checkbox"
+              checked={commitmentAccepted}
+              onChange={(e) => setCommitmentAccepted(e.target.checked)}
+              className="mt-1 h-4 w-4 accent-[hsl(var(--tc-green))]"
+            />
+            <span className="text-[10px] text-muted-foreground leading-relaxed">
+              <strong className="block text-xs text-foreground mb-1">Je signe mon engagement</strong>
+              Je reconnais devoir cotiser jusqu’à la fin du cycle, même après réception de ma cagnotte. En cas de retard, défaillance ou décès, les clauses de garantie/assurance du groupe s’appliquent.
+            </span>
+          </label>
+
           <button
             type="button"
             onClick={handleGuaranteeSubmit}
-            className="w-full py-3.5 rounded-3xl text-sm font-bold text-white tc-gradient-green tc-shadow-green"
+            disabled={!commitmentAccepted}
+            className="w-full py-3.5 rounded-3xl text-sm font-bold text-white tc-gradient-green tc-shadow-green disabled:opacity-50"
           >
             Valider mon compte partenaire
           </button>
