@@ -5,6 +5,9 @@ import ProgressBar from "@/components/ui/ProgressBar";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { isConvexConfigured } from "@/lib/convex";
 import {
   Info, ShieldCheck, TrendingUp, Users, Calendar,
   Coins, Clock, ChevronRight, Zap, Lock
@@ -43,7 +46,9 @@ export default function CreerGroupe() {
     penalty: "5",
     guarantee: "",
     minScore: "0",
+    commitmentAccepted: false,
   });
+  const createConvexGroup = useMutation(api.tontines.createGroup);
 
   useEffect(() => {
     const seen = localStorage.getItem("hasSeenCreationIntro");
@@ -68,6 +73,10 @@ export default function CreerGroupe() {
       toast.error("Votre numéro de compte bancaire partenaire est obligatoire");
       return;
     }
+    if (!form.commitmentAccepted) {
+      toast.error("Vous devez accepter la reconnaissance d'engagement tontinier");
+      return;
+    }
     const members = parseInt(form.memberCount, 10);
     if (!members || members < 2) {
       toast.error("Il faut au moins 2 membres au total, créateur inclus.");
@@ -88,6 +97,25 @@ export default function CreerGroupe() {
         .slice(0, 2) || "GR";
       const colors = ["green", "blue", "amber", "purple", "red"];
       const color = colors[Math.floor(Math.random() * colors.length)];
+
+      if (isConvexConfigured) {
+        const groupId = await createConvexGroup({
+          name: form.name.trim(),
+          contributionAmount: parseFloat(form.amount),
+          frequency: form.frequency,
+          maxMembers,
+          orderType: form.order === "random" ? "random" : "manual",
+          penaltyRate: parseFloat(form.penalty) || 5,
+          minScore: parseInt(form.minScore, 10) || 0,
+          coverageType: "bank",
+          coverageReference: form.guarantee.trim(),
+          commitmentAccepted: form.commitmentAccepted,
+        });
+        await refreshProfile();
+        toast.success("Groupe créé dans Convex avec règles et engagement hashés.");
+        navigate(`/groupe/${groupId}`);
+        return;
+      }
 
       const { data, error } = await supabase
         .from("groups")
@@ -131,10 +159,11 @@ export default function CreerGroupe() {
       await refreshProfile();
       toast.success("🎉 Groupe créé ! Vous êtes membre n°1.");
       navigate(`/groupe/${data.id}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[CreerGroupe] Full Error:", err);
-      const details = err.details || err.hint || "";
-      toast.error(err.message + (details ? ` (${details})` : "") || "Erreur lors de la création");
+      const maybeError = err as { message?: string; details?: string; hint?: string };
+      const details = maybeError.details || maybeError.hint || "";
+      toast.error((maybeError.message || "Erreur lors de la création") + (details ? ` (${details})` : ""));
     } finally {
       setLoading(false);
     }
@@ -449,6 +478,19 @@ export default function CreerGroupe() {
               </div>
             </div>
 
+            <label className="flex items-start gap-3 rounded-3xl border border-[hsla(160,84%,39%,0.18)] bg-[hsla(160,84%,39%,0.06)] p-3">
+              <input
+                type="checkbox"
+                checked={form.commitmentAccepted}
+                onChange={(e) => setForm({ ...form, commitmentAccepted: e.target.checked })}
+                className="mt-1 h-4 w-4 accent-[hsl(var(--tc-green))]"
+              />
+              <span className="text-[10px] text-muted-foreground leading-relaxed">
+                <strong className="block text-xs text-foreground mb-1">Reconnaissance d’engagement tontinier</strong>
+                J’accepte que les règles soient figées à l’activation, que chaque membre cotise jusqu’à la fin du cycle, que les retards déclenchent pénalité/blocage, et que la garantie ou assurance prenne le relais en cas de défaillance ou décès.
+              </span>
+            </label>
+
             {/* Récapitulatif */}
             <div className="p-3 rounded-xl bg-card border border-border">
               <p className="text-xs font-semibold mb-2 flex items-center gap-1">
@@ -463,6 +505,7 @@ export default function CreerGroupe() {
                 <div className="flex justify-between"><span className="text-muted-foreground">Cagnotte par tour</span><span className="font-bold text-[hsl(var(--tc-green))]">{form.amount ? new Intl.NumberFormat("fr-FR").format(parseFloat(form.amount) * totalMembers) + " FCFA" : "—"}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Pénalité</span><span>{form.penalty}%</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Garantie bancaire</span><span className="text-[hsl(var(--tc-green))] font-medium">Obligatoire</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Engagement</span><span className={form.commitmentAccepted ? "text-[hsl(var(--tc-green))] font-medium" : "text-[hsl(var(--tc-red))] font-medium"}>{form.commitmentAccepted ? "Accepté" : "À signer"}</span></div>
               </div>
             </div>
 
@@ -476,7 +519,7 @@ export default function CreerGroupe() {
               </button>
               <button
                 onClick={handleCreate}
-                disabled={loading}
+                disabled={loading || !form.commitmentAccepted}
                 className="flex-1 py-3 rounded-xl text-sm font-semibold text-white tc-gradient-green tc-shadow-green disabled:opacity-50"
               >
                 {loading ? "Création..." : "Créer le groupe →"}

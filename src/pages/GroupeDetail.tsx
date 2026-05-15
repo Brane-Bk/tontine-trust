@@ -7,6 +7,10 @@ import { Settings, Users, Clock, TrendingUp, Shield, Database, Cpu, Link2, Check
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { runTontineAutomation } from "@/lib/tontineAutomation";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { isConvexConfigured } from "@/lib/convex";
+import { toast } from "sonner";
 
 interface Group {
   id: string;
@@ -33,7 +37,7 @@ interface Member {
   id: string;
   profile_id: string;
   turn_order: number;
-  status: "waiting" | "paid" | "late" | "excluded";
+  status: "waiting" | "paid" | "late" | "covered" | "excluded" | "deceased";
   paid_date: string | null;
   role: "admin" | "member";
   guarantee_status: "pending" | "verified" | "rejected";
@@ -63,13 +67,35 @@ export default function GroupeDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useAuth();
-  const [group, setGroup] = useState<Group | null>(null);
+  const [group, setGroup] = useState<Group | null | undefined>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [isMember, setIsMember] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const convexDetail = useQuery(
+    api.tontines.getGroupDetail,
+    isConvexConfigured && id && !id.includes("-") ? { groupId: id } : "skip"
+  );
+  const activateGroupMutation = useMutation(api.tontines.activateGroup);
+  const [activating, setActivating] = useState(false);
+
+  const handleActivate = async () => {
+    if (!id || activating) return;
+    setActivating(true);
+    try {
+      await activateGroupMutation({ groupId: id as never });
+      toast.success("Tontine activée. Le premier tour commence.");
+    } catch (error: unknown) {
+      toast.error(
+        error instanceof Error ? error.message : "Activation impossible"
+      );
+    } finally {
+      setActivating(false);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     if (!id) return;
+    if (isConvexConfigured && !id.includes("-")) return;
     // Automation en arrière-plan
     runTontineAutomation().catch(() => {});
     try {
@@ -80,7 +106,7 @@ export default function GroupeDetail() {
       if (gRow) {
         setGroup(gRow as Group);
       } else {
-        setGroup(undefined as any); // Marquer comme "non trouvé"
+        setGroup(undefined); // Marquer comme "non trouvé"
       }
       const m = (mRows as Member[]) || [];
       setMembers(m);
@@ -91,13 +117,49 @@ export default function GroupeDetail() {
       }
     } catch (err) {
       console.error("[GroupeDetail] Fetch error:", err);
-      setGroup(undefined as any);
+      setGroup(undefined);
     }
   }, [id, user]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    if (!convexDetail) return;
+    setGroup({
+      id: convexDetail.group.id,
+      name: convexDetail.group.name,
+      initials: convexDetail.group.initials,
+      color: convexDetail.group.color,
+      contribution_amount: convexDetail.group.contributionAmount,
+      frequency: convexDetail.group.frequency as Group["frequency"],
+      current_round: convexDetail.group.currentRound,
+      total_rounds: convexDetail.group.totalRounds,
+      total_pool: convexDetail.group.totalPool,
+      guarantee_deposit: 0,
+      status: convexDetail.group.status as Group["status"],
+      next_payout_date: convexDetail.group.nextPayoutAt ? new Date(convexDetail.group.nextPayoutAt).toISOString() : null,
+      cotisation_deadline_at: convexDetail.group.contributionDeadlineAt ? new Date(convexDetail.group.contributionDeadlineAt).toISOString() : null,
+      max_members: convexDetail.group.maxMembers,
+      members_count: convexDetail.group.membersCount,
+      penalty_rate: convexDetail.group.penaltyRate,
+      order_type: "random",
+      created_by: null,
+    });
+    setMembers(convexDetail.members.map((member) => ({
+      id: member.id,
+      profile_id: member.userId,
+      turn_order: member.turnOrder,
+      status: member.status as Member["status"],
+      paid_date: null,
+      role: member.role as Member["role"],
+      guarantee_status: member.coverageStatus as Member["guarantee_status"],
+      profiles: { name: member.name, initials: member.initials },
+    })));
+    setIsMember(convexDetail.isMember);
+    setIsAdmin(convexDetail.isAdmin);
+  }, [convexDetail]);
 
   if (group === undefined) {
     return (
@@ -132,6 +194,7 @@ export default function GroupeDetail() {
   const totalDue = sorted.filter((m) => m.status !== "excluded").length;
   const isCompleted = group.status === "completed" || group.current_round > group.total_rounds;
   const orderMode = group.order_type === "manual" ? "Manuel" : "Aléatoire";
+  const latestProof = convexDetail?.proofs?.[0];
 
   return (
     <div className="animate-fade-in pb-6">
@@ -205,14 +268,14 @@ export default function GroupeDetail() {
             <div>
               <p className="text-[8px] uppercase tracking-wide text-muted-foreground mb-0.5">Identifiant log</p>
               <p className="text-[10px] font-mono-tech truncate text-[hsl(160,28%,34%)] dark:text-[hsl(160,22%,72%)]">
-                0x{(group.id || "").replace(/-/g, "").slice(0, 18)}…
+                {latestProof?.txHash ?? latestProof?.payloadHash ?? `0x${(group.id || "").replace(/-/g, "").slice(0, 18)}…`}
               </p>
             </div>
             <div>
               <p className="text-[8px] uppercase tracking-wide text-muted-foreground mb-0.5">État</p>
               <p className="text-[10px] font-medium flex items-center gap-1 text-foreground/85">
                 <Database className="w-3 h-3 text-[hsl(var(--tc-blue))] opacity-70" />
-                {group.status === "active" ? "Actif" : group.status}
+                {latestProof ? `Preuve ${latestProof.status}` : group.status === "active" ? "Actif" : group.status}
               </p>
             </div>
           </div>
@@ -370,14 +433,40 @@ export default function GroupeDetail() {
         </div>
       </div>
 
-      <div className="px-4">
+      <div className="px-4 flex flex-col gap-3">
+        {isAdmin && group.status === "pending" && (
+          <div className="rounded-xl border border-[hsla(160,84%,39%,0.25)] bg-[hsla(160,84%,39%,0.06)] p-3">
+            <p className="text-[11px] font-semibold mb-1">
+              {group.members_count >= group.max_members
+                ? "Le groupe est complet. Activez la tontine pour démarrer le premier tour."
+                : `En attente de ${group.max_members - group.members_count} membre(s) avant activation.`}
+            </p>
+            <button
+              type="button"
+              onClick={handleActivate}
+              disabled={
+                activating ||
+                group.members_count < group.max_members ||
+                !isConvexConfigured
+              }
+              className="w-full py-3 rounded-xl text-sm font-bold text-white tc-gradient-green tc-shadow-green disabled:opacity-50"
+            >
+              {activating ? "Activation..." : "Activer la tontine"}
+            </button>
+            <p className="text-[10px] text-muted-foreground mt-2 leading-relaxed">
+              L'activation fige les règles et déclenche l'ancrage des preuves blockchain. Tous les membres devront avoir signé leur engagement et validé leur garantie.
+            </p>
+          </div>
+        )}
+
         {isMember ? (
           <button
             type="button"
             onClick={() => navigate("/cotiser")}
-            className="w-full py-3.5 rounded-xl text-sm font-semibold text-white tc-gradient-green-soft tc-shadow-green-soft"
+            disabled={group.status !== "active"}
+            className="w-full py-3.5 rounded-xl text-sm font-semibold text-white tc-gradient-green-soft tc-shadow-green-soft disabled:opacity-50"
           >
-            Cotiser pour ce groupe →
+            {group.status === "active" ? "Cotiser pour ce groupe →" : "En attente d'activation"}
           </button>
         ) : (
           <button
