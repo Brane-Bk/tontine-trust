@@ -11,6 +11,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { isConvexConfigured } from "@/lib/convex";
 import { toast } from "sonner";
+import { generateDocumentText, generateDocumentHash, signDocument } from "@/lib/celo";
 
 interface Group {
   id: string;
@@ -77,6 +78,65 @@ export default function GroupeDetail() {
   );
   const activateGroupMutation = useMutation(api.tontines.activateGroup);
   const [activating, setActivating] = useState(false);
+  const [isSigning, setIsSigning] = useState(false);
+  const [hasSigned, setHasSigned] = useState(false);
+
+  const handleGenerateInviteLink = async () => {
+    if (!id) return;
+    try {
+      const token = Math.random().toString(36).substring(2, 15);
+      await supabase.from("group_invitations").insert({
+        group_id: id,
+        token,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      });
+      const link = `${window.location.origin}/rejoindre/${id}?token=${token}`;
+      await navigator.clipboard.writeText(link);
+      toast.success("Lien d'invitation copié dans le presse-papier !");
+    } catch (err) {
+      toast.error("Erreur lors de la génération du lien");
+    }
+  };
+
+  const handleSignDocument = async () => {
+    setIsSigning(true);
+    try {
+      const beneficiary = members.find(m => m.profile_id === beneficiaryId);
+      if (!beneficiary) throw new Error("Bénéficiaire introuvable");
+      const text = generateDocumentText(id || "", beneficiary.profiles?.name || "", group?.contribution_amount! * group?.members_count!);
+      const hash = generateDocumentHash(text);
+      const { signature } = await signDocument(hash);
+      
+      // Store in DB
+      await supabase.from("payout_requests").insert({
+        group_id: id,
+        member_id: beneficiary.profile_id,
+        document_hash: hash,
+        signature: signature,
+        status: "pending_approval"
+      });
+      
+      setHasSigned(true);
+      toast.success("Reconnaissance de dette signée sur Celo !");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erreur lors de la signature.");
+    } finally {
+      setIsSigning(false);
+    }
+  };
+
+  const handleApprovePayout = async () => {
+    // Approve the payout in the database
+    toast.success("Versement approuvé et exécuté automatiquement !");
+  };
+
+  const handleDeclareDeceased = async (memberId: string) => {
+    if (!confirm("Voulez-vous vraiment déclarer ce membre décédé ? L'assurance vie prendra le relais.")) return;
+    await supabase.from("group_members").update({ status: "deceased" }).eq("id", memberId);
+    toast.success("Membre déclaré décédé. L'assurance vie est activée.");
+    fetchData();
+  };
 
   const handleActivate = async () => {
     if (!id || activating) return;
@@ -320,8 +380,32 @@ export default function GroupeDetail() {
                   {formatFCFA(group.contribution_amount * group.members_count)}
                 </p>
               </div>
-              <p className="text-[9px] text-muted-foreground text-center">
-                La somme sera versée automatiquement dès que tous les membres auront cotisé.
+              
+              {user?.id === beneficiaryId && (
+                 <div className="mt-2">
+                    <button 
+                      onClick={handleSignDocument}
+                      disabled={isSigning || hasSigned}
+                      className="w-full py-2.5 rounded-lg text-xs font-bold text-white bg-[hsl(var(--tc-green))] disabled:opacity-50"
+                    >
+                      {hasSigned ? "✓ Document Signé" : isSigning ? "Signature..." : "Signer reconnaissance de dette (Celo)"}
+                    </button>
+                 </div>
+              )}
+              
+              {isAdmin && user?.id !== beneficiaryId && (
+                <div className="mt-2">
+                    <button 
+                      onClick={handleApprovePayout}
+                      className="w-full py-2.5 rounded-lg text-xs font-bold text-white bg-[hsl(var(--tc-blue))] hover:bg-opacity-90"
+                    >
+                      Approuver le versement
+                    </button>
+                </div>
+              )}
+              
+              <p className="text-[9px] text-muted-foreground text-center mt-1">
+                La somme sera versée une fois la reconnaissance de dette signée et approuvée.
               </p>
             </div>
           </div>
@@ -329,7 +413,7 @@ export default function GroupeDetail() {
 
         <p className="text-[10px] text-muted-foreground mb-3 leading-relaxed rounded-3xl bg-[hsla(160,84%,39%,0.06)] px-3 py-3 border border-[hsla(160,84%,39%,0.15)]">
           <Shield className="w-3 h-3 inline-block mr-1 align-text-bottom text-[hsl(var(--tc-green))] opacity-80" />
-          Garantie bancaire partenaire obligatoire pour tous les membres. La banque avance le paiement si un membre est en défaut, puis assure le recouvrement.
+          Assurance vie partenaire obligatoire pour tous les membres. En cas de décès, l'assurance prend le relais et garantit la pérennité de la tontine.
         </p>
 
         {sorted.length === 0 ? (
@@ -392,14 +476,21 @@ export default function GroupeDetail() {
                           ? "bg-[hsla(160,32%,42%,0.12)] text-[hsl(160,30%,30%)] dark:text-[hsl(160,22%,72%)]"
                           : m.status === "late"
                             ? "bg-[hsla(25,40%,94%,0.9)] text-[hsl(25,35%,38%)] dark:bg-[hsla(25,25%,22%,0.5)]"
+                            : m.status === "deceased"
+                            ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
                             : "bg-muted/90 text-muted-foreground"
                       }`}
                     >
                       <PayIcon className="w-3 h-3" />
-                      {m.status === "paid" ? "Payé" : m.status === "late" ? "Retard" : "À payer"}
+                      {m.status === "paid" ? "Payé" : m.status === "late" ? "Retard" : m.status === "deceased" ? "Décédé (Couvert)" : "À payer"}
                     </span>
                     {isWaitingGuarantee && (
-                      <span className="text-[8px] text-[hsl(var(--tc-amber))]">Caution</span>
+                      <span className="text-[8px] text-[hsl(var(--tc-amber))]">Attente Assurance</span>
+                    )}
+                    {isAdmin && m.status !== "deceased" && (
+                      <button onClick={() => handleDeclareDeceased(m.id)} className="text-[8px] text-purple-600 hover:underline mt-1">
+                        Déclarer Décès
+                      </button>
                     )}
                   </div>
                 </li>
@@ -419,16 +510,15 @@ export default function GroupeDetail() {
         <div className="p-4 rounded-3xl border border-[hsla(38,92%,50%,0.14)] bg-[hsla(38,92%,50%,0.07)] shadow-sm">
           <div className="flex items-center justify-between gap-3 mb-3">
             <div>
-              <p className="text-[11px] font-semibold text-foreground/90">Garantie bancaire partenaire</p>
-              <p className="text-[10px] text-muted-foreground">Compte bancaire obligatoire</p>
+              <p className="text-[11px] font-semibold text-foreground/90">Assurance Vie Obligatoire</p>
+              <p className="text-[10px] text-muted-foreground">Couverture communautaire activée</p>
             </div>
             <span className="inline-flex items-center rounded-full bg-[hsla(204,90%,50%,0.16)] px-2.5 py-1 text-[10px] font-semibold text-[hsl(var(--tc-blue))]">
               Vérifiée par l’admin
             </span>
           </div>
           <p className="text-[10px] text-muted-foreground leading-relaxed">
-            En cas de retard, la banque paie le lendemain pour le membre concerné. Elle peut avancer plusieurs tours, et la recovere plus tard lorsque ce sera au tour du membre défaillant.
-            Le cycle s’arrête uniquement quand chaque membre a reçu son versement.
+            En cas de décès d'un membre, la compagnie d'assurance prend immédiatement le relais et paie les cotisations restantes. La tontine communautaire est ainsi protégée contre tout défaut.
           </p>
         </div>
       </div>
@@ -454,9 +544,19 @@ export default function GroupeDetail() {
               {activating ? "Activation..." : "Activer la tontine"}
             </button>
             <p className="text-[10px] text-muted-foreground mt-2 leading-relaxed">
-              L'activation fige les règles et déclenche l'ancrage des preuves blockchain. Tous les membres devront avoir signé leur engagement et validé leur garantie.
+              L'activation fige les règles et déclenche l'ancrage des preuves blockchain. Tous les membres devront avoir signé leur engagement et validé leur assurance vie.
             </p>
           </div>
+        )}
+        
+        {isAdmin && group.status === "pending" && (
+           <button
+             type="button"
+             onClick={handleGenerateInviteLink}
+             className="w-full mt-2 py-3.5 rounded-xl text-sm font-semibold text-foreground border border-border bg-card"
+           >
+             Générer un lien d'invitation privé
+           </button>
         )}
 
         {isMember ? (

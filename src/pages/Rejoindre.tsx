@@ -65,6 +65,12 @@ const [commitmentAccepted, setCommitmentAccepted] = useState(false);
   useEffect(() => {
     if (!id) return;
     if (isConvexConfigured && !id.includes("-")) return;
+    
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+
+    // En vrai, il faudrait utiliser une RPC ou vérifier le token pour contourner la RLS stricte,
+    // mais pour l'instant on essaie de charger le groupe.
     supabase.from("groups").select("*").eq("id", id).single()
       .then(({ data }) => setGroup(data as Group));
   }, [id]);
@@ -194,7 +200,7 @@ const [commitmentAccepted, setCommitmentAccepted] = useState(false);
 
     try {
       if (!guaranteeProof.trim()) {
-        toast.error("Veuillez fournir le numéro de compte bancaire partenaire.");
+        toast.error("Veuillez fournir le numéro de police d'assurance vie.");
         setStep("guarantee");
         return;
       }
@@ -207,7 +213,7 @@ const [commitmentAccepted, setCommitmentAccepted] = useState(false);
       if (isConvexConfigured && group.id && !group.id.includes("-")) {
         await joinConvexGroup({
           groupId: group.id,
-          coverageType: "bank",
+          coverageType: "life_insurance",
           coverageReference: guaranteeProof.trim(),
           commitmentAccepted,
         });
@@ -230,7 +236,7 @@ const [commitmentAccepted, setCommitmentAccepted] = useState(false);
         role: "member",
         turn_order: nextTurn,
         status: "waiting",
-        guarantee_type: "bank",
+        guarantee_type: "life_insurance",
         guarantee_proof: guaranteeProof,
         guarantee_status: "pending",
       });
@@ -257,9 +263,9 @@ const [commitmentAccepted, setCommitmentAccepted] = useState(false);
                 🔒
               </div>
               <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">Garantie bancaire obligatoire</p>
+                <p className="text-sm font-semibold text-foreground">Assurance vie obligatoire</p>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Ce groupe exige un compte bancaire partenaire comme garantie. En cas de retard, la banque paie automatiquement le lendemain pour le membre en défaut, puis récupère la dette plus tard.
+                  Ce groupe exige une assurance vie. En cas de décès, l'assurance paie automatiquement les cotisations restantes, protégeant ainsi le reste du groupe.
                 </p>
               </div>
             </div>
@@ -267,17 +273,17 @@ const [commitmentAccepted, setCommitmentAccepted] = useState(false);
 
           <div className="animate-fade-in mb-5">
             <label className="block text-xs font-semibold text-muted-foreground mb-2">
-              Numéro de compte bancaire partenaire
+              Numéro de police d'assurance vie
             </label>
             <input
               type="text"
               value={guaranteeProof}
               onChange={(e) => setGuaranteeProof(e.target.value)}
-              placeholder="Ex : BOA-1234567-ABJ-003"
+              placeholder="Ex : NSIA-VIE-12345"
               className="w-full bg-card border border-border rounded-2xl px-4 py-3 text-sm outline-none focus:border-[hsl(var(--tc-green))] transition-colors"
             />
             <p className="text-[10px] text-[hsl(var(--tc-blue))] mt-3 leading-relaxed">
-              ⚠️ Ce numéro est indispensable pour confirmer votre adhésion. La banque partenaire valide la garantie et veille à ce que le cycle dure jusqu’à ce que tous aient reçu leur tour.
+              ⚠️ Ce numéro est indispensable pour confirmer votre adhésion. La compagnie d'assurance valide la garantie et veille à ce que le cycle dure jusqu’à ce que tous aient reçu leur tour.
             </p>
           </div>
 
@@ -300,7 +306,7 @@ const [commitmentAccepted, setCommitmentAccepted] = useState(false);
             disabled={!commitmentAccepted}
             className="w-full py-3.5 rounded-3xl text-sm font-bold text-white tc-gradient-green tc-shadow-green disabled:opacity-50"
           >
-            Valider mon compte partenaire
+            Valider mon assurance vie
           </button>
         </div>
       </div>
@@ -317,7 +323,7 @@ const [commitmentAccepted, setCommitmentAccepted] = useState(false);
         <div className="text-center">
           <p className="text-sm font-semibold">Adhésion en cours...</p>
           <p className="text-xs text-muted-foreground mt-1">
-            {hasGuarantee ? "Enregistrement de la garantie bancaire" : "Enregistrement dans le registre du groupe"}
+            {hasGuarantee ? "Enregistrement de l'assurance vie" : "Enregistrement dans le registre du groupe"}
           </p>
         </div>
       </div>
@@ -334,7 +340,7 @@ const [commitmentAccepted, setCommitmentAccepted] = useState(false);
           </div>
           <h2 className="text-xl font-bold mb-2">Bienvenue dans "{group.name}" !</h2>
           <p className="text-xs text-muted-foreground mb-5 leading-relaxed px-4">
-            ⏳ Votre garantie bancaire est en cours d'examen. Vous recevrez une notification une fois validée.
+            ⏳ Votre numéro d'assurance vie est en cours d'examen. Vous recevrez une notification une fois validé.
           </p>
 
           <div className="bg-[hsla(160,84%,39%,0.08)] border border-[hsla(160,84%,39%,0.18)] rounded-3xl p-5 text-left mb-6 mx-2 shadow-sm">
@@ -342,7 +348,7 @@ const [commitmentAccepted, setCommitmentAccepted] = useState(false);
               Prochaine étape
             </p>
             <div className="space-y-2 text-[11px] text-muted-foreground leading-relaxed">
-              <p>① Votre compte partenaire est enregistré et passe en validation.</p>
+              <p>① Votre assurance vie est enregistrée et passe en validation.</p>
               <p>② Quand le groupe est complet, les tours démarrent automatiquement.</p>
               <p>③ À chaque tour, vous cotisez le montant affiché, puis le bénéficiaire reçoit la cagnotte.</p>
               <p>④ En cas de retard, votre participation au cycle est suspendue jusqu'à régularisation.</p>
@@ -441,9 +447,9 @@ const [commitmentAccepted, setCommitmentAccepted] = useState(false);
                 <Lock className="w-4 h-4" />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-foreground">Garantie bancaire obligatoire</p>
+                <p className="text-sm font-semibold text-foreground">Assurance Vie obligatoire</p>
                 <p className="text-[10px] text-muted-foreground leading-relaxed mt-2">
-                  Ce groupe valide l'adhésion uniquement via un compte bancaire partenaire. La banque paie le lendemain pour les retards et le cycle continue jusqu'à ce que chaque membre ait reçu son argent.
+                  Ce groupe valide l'adhésion uniquement via un contrat d'assurance vie. En cas de décès, l'assurance prend le relais pour garantir les fonds des autres membres.
                 </p>
               </div>
             </div>

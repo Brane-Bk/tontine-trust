@@ -33,7 +33,7 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
-    CREATE TYPE public.member_status     AS ENUM ('waiting', 'paid', 'late', 'excluded');
+    CREATE TYPE public.member_status     AS ENUM ('waiting', 'paid', 'late', 'excluded', 'deceased');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
@@ -45,7 +45,7 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
-    CREATE TYPE public.guarantee_type    AS ENUM ('money', 'bank', 'property');
+    CREATE TYPE public.guarantee_type    AS ENUM ('money', 'bank', 'property', 'life_insurance');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
@@ -303,6 +303,51 @@ CREATE INDEX IF NOT EXISTS idx_payment_requests_status  ON public.payment_reques
 
 
 -- ============================================================================
+-- 7b. TABLE : payout_requests (Reconnaissance de dette et paiement)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.payout_requests (
+    id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    group_id        UUID        NOT NULL REFERENCES public.groups(id) ON DELETE CASCADE,
+    member_id       UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    
+    document_hash   TEXT        NOT NULL,
+    signature       TEXT        DEFAULT NULL,
+    creator_approved BOOLEAN    NOT NULL DEFAULT false,
+    
+    status          TEXT        NOT NULL DEFAULT 'pending_signature', -- pending_signature, pending_approval, approved
+    
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
+);
+
+CREATE INDEX IF NOT EXISTS idx_payout_requests_group ON public.payout_requests (group_id);
+
+-- ============================================================================
+-- 7c. TABLE : group_invitations (Liens privés pour rejoindre)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.group_invitations (
+    id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    group_id        UUID        NOT NULL REFERENCES public.groups(id) ON DELETE CASCADE,
+    token           TEXT        NOT NULL UNIQUE,
+    expires_at      TIMESTAMPTZ NOT NULL,
+    
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
+);
+
+CREATE INDEX IF NOT EXISTS idx_group_invitations_token ON public.group_invitations (token);
+
+ALTER TABLE public.payout_requests ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "payout_requests_select" ON public.payout_requests FOR SELECT USING (true);
+CREATE POLICY "payout_requests_insert" ON public.payout_requests FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "payout_requests_update" ON public.payout_requests FOR UPDATE USING (auth.role() = 'authenticated');
+
+ALTER TABLE public.group_invitations ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "group_invitations_select" ON public.group_invitations FOR SELECT USING (true);
+CREATE POLICY "group_invitations_insert" ON public.group_invitations FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+
+
+-- ============================================================================
 -- 8. ROW LEVEL SECURITY (RLS)
 -- ============================================================================
 
@@ -339,7 +384,15 @@ DROP POLICY IF EXISTS "Authenticated users can create groups." ON public.groups;
 DROP POLICY IF EXISTS "Group creator can update the group."    ON public.groups;
 
 CREATE POLICY "groups_select_all"
-    ON public.groups FOR SELECT USING (true);
+    ON public.groups FOR SELECT USING (
+        auth.uid() = created_by 
+        OR 
+        EXISTS (
+            SELECT 1 FROM public.group_members 
+            WHERE group_members.group_id = groups.id 
+            AND group_members.profile_id = auth.uid()
+        )
+    );
 
 CREATE POLICY "groups_insert_auth"
     ON public.groups FOR INSERT WITH CHECK (auth.role() = 'authenticated');

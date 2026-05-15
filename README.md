@@ -25,13 +25,32 @@ Score de Confiance : Calcul du score basé sur l'activité et la régularité (p
 Design Responsive : Adapté pour mobile et tablette.
 Notifications : Alertes pour les paiements à venir et les rappels.
 Thème Sombre : Support complet du mode sombre.
-🔗 Technologie
-Frontend : React + Vite
-Styling : Tailwind CSS + Composants UI (TCAvatar, ProgressBar, etc.)
-Backend MVP final : Convex (règles métier temps réel, crons, actions Kkiapay, preuves blockchain)
-Paiement : Kkiapay / Mobile Money
-Blockchain : smart contract EVM testnet pour ancrer les preuves des règles, engagements, cotisations et distributions
-Mobile : PWA installable mobile-first
+🔗 Architecture Technique
+### Frontend
+- **Framework** : React 18 + TypeScript
+- **Build** : Vite 8
+- **Routing** : React Router v6
+- **Styling** : TailwindCSS + shadcn/ui
+- **State Management** : TanStack Query (React Query)
+- **Theming** : next-themes (dark/light mode)
+- **Mobile** : PWA installable mobile-first
+
+### Backend & Base de données
+- **BDD** : Supabase (PostgreSQL)
+- **Auth** : Supabase Auth
+- **Real-time** : Supabase Realtime (subscriptions)
+- **Backend Serverless** : Convex (règles métier, crons)
+
+### Paiements & Assurances
+- **Provider** : Kkiapay (Mobile Money Bénin)
+- **Widget** : kkiapay-react
+- **API** : Intégration custom dans lib/kkiapay.ts
+- **Assurance Vie** : Intégration partenaire pour couvrir les décès
+
+### Web3 & Blockchain
+- **Réseau** : Celo Alfajores
+- **Outils** : viem
+- **Fonctionnalité** : Signature cryptographique des reconnaissances de dette pour validation communautaire et déclenchement automatique des versements.
 📊 Architecture des Données
 La base de données Supabase est structurée autour de plusieurs tables principales :
 

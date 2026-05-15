@@ -70,7 +70,7 @@ export default function CreerGroupe() {
       return;
     }
     if (!form.guarantee.trim()) {
-      toast.error("Votre numéro de compte bancaire partenaire est obligatoire");
+      toast.error("Votre numéro de police d'assurance vie est obligatoire");
       return;
     }
     if (!form.commitmentAccepted) {
@@ -107,7 +107,7 @@ export default function CreerGroupe() {
           orderType: form.order === "random" ? "random" : "manual",
           penaltyRate: parseFloat(form.penalty) || 5,
           minScore: parseInt(form.minScore, 10) || 0,
-          coverageType: "bank",
+          coverageType: "life_insurance",
           coverageReference: form.guarantee.trim(),
           commitmentAccepted: form.commitmentAccepted,
         });
@@ -146,7 +146,7 @@ export default function CreerGroupe() {
         role: "admin",
         turn_order: 1,
         status: "waiting",
-        guarantee_type: "bank",
+        guarantee_type: "life_insurance",
         guarantee_proof: form.guarantee,
         guarantee_status: "verified",
       });
@@ -216,8 +216,8 @@ export default function CreerGroupe() {
                 icon: ShieldCheck,
                 color: "text-[hsl(var(--tc-green))]",
                 bg: "bg-[hsla(160,84%,39%,0.1)]",
-                title: "Garantie bancaire obligatoire",
-                body: "Une banque partenaire avance le paiement en cas de défaut du membre, puis récupère les fonds auprès de lui. Ce mécanisme renforce la confiance du groupe.",
+                title: "Assurance Vie obligatoire",
+                body: "Le paiement de l'assurance vie est obligatoire pour tous les membres. En cas de décès, l'assurance prend le relais et couvre les cotisations restantes, garantissant ainsi la pérennité de la tontine communautaire.",
               },
               {
                 icon: TrendingUp,
@@ -430,10 +430,10 @@ export default function CreerGroupe() {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                    Compte bancaire partenaire (garantie) — Obligatoire
+                    Numéro de police d'assurance vie — Obligatoire
                   </label>
                   <p className="text-[10px] text-muted-foreground leading-relaxed">
-                    Ce compte sera associé à votre adhésion. En cas de retard d’un membre, la banque peut avancer le paiement et récupérer ensuite lorsque viendra le tour du débiteur.
+                    Le paiement de cette assurance vie est obligatoire pour sécuriser le groupe. En cas de décès, elle couvre vos échéances.
                   </p>
                 </div>
                 <span className="inline-flex items-center rounded-full bg-[hsla(38,92%,50%,0.12)] px-2.5 py-1 text-[10px] font-semibold text-[hsl(var(--tc-amber))]">
@@ -444,12 +444,12 @@ export default function CreerGroupe() {
                 type="text"
                 value={form.guarantee}
                 onChange={(e) => setForm({ ...form, guarantee: e.target.value })}
-                placeholder="Ex : BOA-1234567-ABJ-003"
+                placeholder="Ex : NSIA-VIE-12345"
                 className="w-full px-4 py-3 rounded-3xl border border-border bg-card text-sm outline-none focus:border-[hsl(var(--tc-green))] transition-colors"
               />
               <div className="rounded-3xl border border-[hsla(38,92%,50%,0.15)] bg-[hsla(38,92%,50%,0.06)] p-3 text-[10px] text-muted-foreground">
-                <p className="font-semibold text-[11px] text-foreground mb-1">Sécurité de la garantie</p>
-                <p>Le groupe est protégé par une banque partenaire. Votre compte est utilisé uniquement pour valider la garantie, pas pour prélever automatiquement sans notification.</p>
+                <p className="font-semibold text-[11px] text-foreground mb-1">Sécurité communautaire</p>
+                <p>La tontine est strictement privée. L'assurance vie garantit que l'épargne de vos proches ou des membres n'est pas perdue en cas d'imprévu.</p>
               </div>
             </div>
 
@@ -504,7 +504,7 @@ export default function CreerGroupe() {
                 <div className="flex justify-between"><span className="text-muted-foreground">Fréquence</span><span className="font-medium">{form.frequency}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Cagnotte par tour</span><span className="font-bold text-[hsl(var(--tc-green))]">{form.amount ? new Intl.NumberFormat("fr-FR").format(parseFloat(form.amount) * totalMembers) + " FCFA" : "—"}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Pénalité</span><span>{form.penalty}%</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Garantie bancaire</span><span className="text-[hsl(var(--tc-green))] font-medium">Obligatoire</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Assurance Vie</span><span className="text-[hsl(var(--tc-green))] font-medium">Obligatoire</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Engagement</span><span className={form.commitmentAccepted ? "text-[hsl(var(--tc-green))] font-medium" : "text-[hsl(var(--tc-red))] font-medium"}>{form.commitmentAccepted ? "Accepté" : "À signer"}</span></div>
               </div>
             </div>
