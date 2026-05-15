@@ -28,7 +28,10 @@ Thème Sombre : Support complet du mode sombre.
 🔗 Technologie
 Frontend : React + Vite
 Styling : Tailwind CSS + Composants UI (TCAvatar, ProgressBar, etc.)
-Backend : Node.js + Supabase (Authentification, Base de données)
+Backend MVP final : Convex (règles métier temps réel, crons, actions Kkiapay, preuves blockchain)
+Paiement : Kkiapay / Mobile Money
+Blockchain : smart contract EVM testnet pour ancrer les preuves des règles, engagements, cotisations et distributions
+Mobile : PWA installable mobile-first
 📊 Architecture des Données
 La base de données Supabase est structurée autour de plusieurs tables principales :
 
@@ -64,6 +67,7 @@ VITE_KKIAPAY_SECRET=your-kkiapay-secret
 VITE_KKIAPAY_PUBLIC_KEY=your-kkiapay-public-key
 VITE_KKIAPAY_PRIVATE_KEY=your-kkiapay-private-key
 VITE_KKIAPAY_SANDBOX=true
+VITE_CONVEX_URL=https://your-convex-deployment.convex.cloud
 
 
 
@@ -72,6 +76,23 @@ VITE_KKIAPAY_SANDBOX=true
 
 npm run dev
 L'application sera accessible à l'adresse indiquée par Vite (généralement http://localhost:5173).
+
+5. Lancer Convex en développement :
+
+```bash
+npx convex dev
+```
+
+Variables serveur Convex à configurer dans le dashboard Convex :
+
+```bash
+SUPABASE_AUTH_ISSUER=https://your-project.supabase.co/auth/v1
+KKIAPAY_DEMO_MODE=true
+KKIAPAY_BASE_URL=https://api.kkiapay.me
+KKIAPAY_PRIVATE_KEY=your-server-side-private-key
+TONTINECHAIN_CHAIN_ID=44787
+TONTINECHAIN_CONTRACT_ADDRESS=0x0000000000000000000000000000000000002026
+```
 
 📂 Structure du Projet
 src/components/ : Composants React réutilisables (TopBar, UI widgets).

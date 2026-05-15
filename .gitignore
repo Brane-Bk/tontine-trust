@@ -26,3 +26,12 @@ dist-ssr
 # Environment variables
 .env
 .env.example
+.env.local
+
+# Cursor / agents
+.agents/
+.cursor/
+AGENTS.md
+CLAUDE.md
+skills-lock.json
+.convex-tmp/
